@@ -13,6 +13,8 @@
 //include costanti
 #include "costanti.h"
 
+//#include "connection.h"
+
 
 
 // crea un socket di ascolto
@@ -24,14 +26,16 @@ int create_listener_socket(struct sockaddr_in * sockaddr , socklen_t * len , int
     memset(sockaddr , 0 , sizeof((*sockaddr)));
     sockaddr->sin_family = AF_INET;
     sockaddr->sin_port = htons(port);
+   
     inet_pton(AF_INET , LOCALHOST  , &sockaddr->sin_addr);
 
     (*len) = sizeof((*sockaddr));
-    ret = bind(sd, (struct sockaddr*)&sockaddr, (*len));
+    ret = bind(sd, (struct sockaddr*)sockaddr, (*len));
 
     if(ret < 0){
         perror("Errore in fase di bind: \n");
-        exit(-1);
+        exit(0);
+
     }
 
     return sd;

@@ -9,6 +9,8 @@
 #include <time.h>
 #include <sys/time.h>
 
+
+
 //costanti
 #include "./util/costanti.h" 
 
@@ -20,7 +22,7 @@ int my_port;
 
 //socket e strutture relative all'ascolto
 int listen_socket;
-struct sockadd_in listen_addr;
+struct sockaddr_in listen_addr;
 socklen_t listen_addr_len;
 
 //buffer per i comandi da stdin
@@ -38,12 +40,16 @@ int manager_port;
 
 int main(int argc , char** argv){
 
+    printf("avvio il client...\n");
+
+
     //inizializzo i set
     FD_ZERO(&master);
     FD_ZERO(&read_fds);
 
+
     //ricavo il numero di porta
-    my_port = argv[1];
+    my_port = atoi(argv[1]);
 
     //creo il socket di ascolto
     listen_socket = create_listener_socket(&listen_addr , &listen_addr_len , my_port);
@@ -66,6 +72,7 @@ int main(int argc , char** argv){
 
             char command[MAX_COMMAND_LEN];
 
+            fgets(stdin_buffer , MAX_COMMAND_LEN , stdin);
             sscanf(stdin_buffer, "%s", command);
 
             if(strcmp(command , CLIENT_START_COMMAND) == 0){
