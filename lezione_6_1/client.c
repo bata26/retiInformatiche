@@ -21,7 +21,7 @@ int main(int argc , char * argv[]){
     //creo la sockaddr
     memset(&server_addr , 0 , sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sinport = htons(4242);
+    server_addr.sin_port = htons(4242);
 
     //assegno l'IP al socket
     inet_pton(AF_INET , "127.0.0.1" , &server_addr.sin_addr);
