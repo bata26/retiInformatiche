@@ -91,10 +91,12 @@ int main(int argc , char** argv){
             int sender_port;
             char request_received[HEADER_LEN];
 
+            printf("Ricevuto qualcosa");
 
-            sender_port = recv_pkt(listen_socket , &request_received , HEADER_LEN);
 
-            if(strcmp(request_received , "CON_REQ")){
+            sender_port = recv_pkt(listen_socket , request_received , HEADER_LEN);
+
+            if(strcmp(request_received , "CONN_REQ")){
                 printf("Ho ricevuto la CON REQ da %d" , sender_port);
                 send_ACK(listen_socket , "CON_ACK" , sender_port);
                 printf("invio ACK");

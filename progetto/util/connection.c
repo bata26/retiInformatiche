@@ -34,7 +34,7 @@ int create_listener_socket(struct sockaddr_in * sockaddr , socklen_t * len , int
     sd = socket(AF_INET , SOCK_DGRAM , 0);
 
     // setup del sockaddr_in
-    setup_addr(&sockaddr , &len , port);
+    setup_addr(sockaddr , len , port);
     
 
     ret = bind(sd, (struct sockaddr*)sockaddr, (*len));
@@ -70,7 +70,7 @@ void send_pkt(int socket , char * msg , int buf_len , int port_dest , char * exp
     fd_set wait;
     char received[RECEIVED_LEN];
 
-
+    done = 0;
 
     // setup del dest_addr
     setup_addr(&dest_addr , &dest_len , port_dest);
@@ -79,6 +79,7 @@ void send_pkt(int socket , char * msg , int buf_len , int port_dest , char * exp
     while(!done){
         // invio il buffer
         do{
+            printf("provo ad inviare %s al server" , msg);
             sendto(socket , msg , buf_len , 0 , (struct sockaddr*)&dest_addr , dest_len);
         }while( ret < 0);
 
@@ -100,11 +101,11 @@ void send_pkt(int socket , char * msg , int buf_len , int port_dest , char * exp
             printf("Ho ricevuto l'ack %s da %d" , received , tmp_addr.sin_port);
             done = 1;
         }else{
-            ptinf("ho ricevuto qualcosa da qualcun altro RIP");
+            printf("ho ricevuto qualcosa da qualcun altro RIP");
         }
 
         //pulisco il set
-        FD_CLEAR(socket , &wait);
+        FD_CLR(socket , &wait);
     }
 
 
@@ -123,19 +124,19 @@ void send_ACK(int socket , char * ack_to_send , int dest_port){
 
     // mando l'ack senza dare peso a cosa potrei ricevere indietro, tanto se il peer non ha ricevuto l'ack rimanda il msg
     do{
-        ret = sendto(socket , ack_to_send , ACK_LEN + 1 , 0 , (struct sockaddr *)&dest_addr , &addr_len);
+        ret = sendto(socket , ack_to_send , ACK_LEN + 1 , 0 , (struct sockaddr *)&dest_addr , addr_len);
     }while(ret < 0 );
 }
 
 
 int recv_pkt(int socket , char * buf , int buf_len){
     int ret;
-    struct sockaddr_in * sender_addr;
+    struct sockaddr_in sender_addr;
     socklen_t sender_addr_len;
 
     sender_addr_len = sizeof(sender_addr);
 
-    recvfrom(socket , buf , buf_len , 0 , (struct sockaddr *)&sender_addr , &sender_addr_len);
+    recvfrom(socket , buf , buf_len , 0 , (struct sockaddr*)&sender_addr , &sender_addr_len);
 
     return ntohs(sender_addr.sin_port);
 }

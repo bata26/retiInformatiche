@@ -69,16 +69,20 @@ int main(int argc , char** argv){
 
         // se è arrivato qualcosa da stdin
         if(FD_ISSET( 0 , &read_fds)){
-
             char command[MAX_COMMAND_LEN];
+            printf("comando arrivato\n");
+            
 
-            fgets(stdin_buffer , MAX_COMMAND_LEN , stdin);
+            fgets(stdin_buffer , MAX_STDIN_LEN , stdin);
+            printf("ho eseguito la gets -->%s" ,stdin_buffer);
             sscanf(stdin_buffer, "%s", command);
+            printf("dopo gets e sanf");
+            //printf("\n ho ricevuto il comando %s" , command);
 
-            if(strcmp(command , CLIENT_START_COMMAND) == 0){
+            if(strcmp(command , "start") == 0){
                 printf("provo ad inviare la req conn");
-                send_pkt(listen_socket , "CON_REQ" , HEADER_LEN , server_port, "CON_ACK");
-
+                send_pkt(listen_socket , "CONN_REQ" , HEADER_LEN , server_port, "CON_ACK");
+                printf("Ricevuto ACK");
                 /*
                     DEVO RICEVERE LE PORTE DEI VICINI
                 */
