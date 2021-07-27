@@ -76,7 +76,12 @@ int main(int argc , char** argv){
             sscanf(stdin_buffer, "%s", command);
 
             if(strcmp(command , CLIENT_START_COMMAND) == 0){
-                printf(" starttt");
+                printf("provo ad inviare la req conn");
+                send_pkt(listen_socket , "CON_REQ" , HEADER_LEN , server_port, "CON_ACK");
+
+                /*
+                    DEVO RICEVERE LE PORTE DEI VICINI
+                */
             }
         }
     }
