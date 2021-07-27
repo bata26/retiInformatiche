@@ -81,12 +81,9 @@ int main(int argc , char** argv){
             printf("ho eseguito la gets -->%s\n" ,stdin_buffer);
             scanfres = sscanf(stdin_buffer, "%s", command);
             printf("ho ricevuto il comando %s\n" , command);
-            printf("pre compare");
-            cmp_res = strcmp(command , "start");
-            printf("str_cmp --> %d" , cmp_res);
 
-            if(cmp_res == 0){
-                printf("provo ad inviare la req conn");
+            if(strcmp(command , "start") == 0){
+                printf("provo ad inviare la req conn\n");
                 send_pkt(listen_socket , "CONN_REQ" , HEADER_LEN , server_port, "CON_ACK");
                 printf("Ricevuto ACK");
                 /*
