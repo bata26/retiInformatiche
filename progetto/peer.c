@@ -53,7 +53,7 @@ int main(int argc , char** argv){
 
     //creo il socket di ascolto
     listen_socket = create_listener_socket(&listen_addr , &listen_addr_len , my_port);
-
+    printf("socket creato\n");
     //aggiungo il socket di ascolto e il stdin
     FD_SET(listen_socket , &master);
     FD_SET(0 , &master);
@@ -70,23 +70,33 @@ int main(int argc , char** argv){
         // se è arrivato qualcosa da stdin
         if(FD_ISSET( 0 , &read_fds)){
             char command[MAX_COMMAND_LEN];
+            int scanfres;
+            int cmp_res;
             printf("comando arrivato\n");
             
+            scanfres = 0;
+            cmp_res = 0;
 
             fgets(stdin_buffer , MAX_STDIN_LEN , stdin);
-            printf("ho eseguito la gets -->%s" ,stdin_buffer);
-            sscanf(stdin_buffer, "%s", command);
-            printf("dopo gets e sanf");
-            //printf("\n ho ricevuto il comando %s" , command);
+            printf("ho eseguito la gets -->%s\n" ,stdin_buffer);
+            scanfres = sscanf(stdin_buffer, "%s", command);
+            printf("ho ricevuto il comando %s\n" , command);
+            printf("pre compare");
+            cmp_res = strcmp(command , "start");
+            printf("str_cmp --> %d" , cmp_res);
 
-            if(strcmp(command , "start") == 0){
+            if(cmp_res == 0){
                 printf("provo ad inviare la req conn");
                 send_pkt(listen_socket , "CONN_REQ" , HEADER_LEN , server_port, "CON_ACK");
                 printf("Ricevuto ACK");
                 /*
                     DEVO RICEVERE LE PORTE DEI VICINI
                 */
+            }else{
+                printf("else");
             }
+
+            printf("fuori dalla cmp");
         }
     }
 }

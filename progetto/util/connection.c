@@ -13,7 +13,6 @@
 //include costanti
 #include "costanti.h"
 
-#include "connection.h"
 
 
 void setup_addr(struct sockaddr_in * sockaddr , socklen_t * len , int port){
@@ -45,6 +44,8 @@ int create_listener_socket(struct sockaddr_in * sockaddr , socklen_t * len , int
 
     }
 
+    printf("nella listen socket\n");
+
     return sd;
 
 }
@@ -71,6 +72,9 @@ void send_pkt(int socket , char * msg , int buf_len , int port_dest , char * exp
     char received[RECEIVED_LEN];
 
     done = 0;
+    ret = 0;
+
+    printf("nella send_pkt");
 
     // setup del dest_addr
     setup_addr(&dest_addr , &dest_len , port_dest);
