@@ -36,6 +36,8 @@ int fdmax;
 int manager_port;
 
 
+void waitfor(){ return; }
+
 int main(int argc , char** argv){
 
     printf("avvio il server...\n");
@@ -47,7 +49,8 @@ int main(int argc , char** argv){
 
 
     //ricavo il numero di porta
-    my_port = atoi(argv[1]);
+    //my_port = atoi(argv[1]);
+    my_port = 4242;
 
     //creo il socket di ascolto
     listen_socket = create_listener_socket(&listen_addr , &listen_addr_len , my_port);
@@ -96,7 +99,21 @@ int main(int argc , char** argv){
             struct sockaddr_in sender_addr;
             socklen_t sender_addr_len;
 
+            printf("Pre-recv");
 
+            sender_port = recv_pkt(listen_socket , request_received , HEADER_LEN);
+
+            printf("Ho ricevuto dal client %d --> %s\n" , sender_port , request_received);
+
+            waitfor();            
+
+            if(strcmp(request_received , "CONN_REQ")){
+                printf("Prima della send_ACK\n");
+                send_ACK(listen_socket , "CON_ACK" , sender_port);
+                printf("ACK inviato\n");
+            }
+
+/*
             printf("Nella recvpkt\n");
             ret = 0;
             sender_addr_len = sizeof(sender_addr);

@@ -61,7 +61,7 @@ int create_listener_socket(struct sockaddr_in * sockaddr , socklen_t * len , int
  addrlen -> lunghezza di dest_addr
 */
 
-void send_pkt(int socket , char* msg , int buf_len , int port_dest , char * expected_ack){
+void send_pkt(int sd , char* msg , int buf_len , int port_dest , char * expected_ack){
     int ret;
     int send;
     struct sockaddr_in dest_addr;
@@ -70,65 +70,76 @@ void send_pkt(int socket , char* msg , int buf_len , int port_dest , char * expe
     socklen_t tmp_len;
     fd_set wait;
     char received[RECEIVED_LEN];
+    struct timeval interval;
 
     // setup del dest_addr
     setup_addr(&dest_addr , &dest_len , port_dest);
+
     send = 0;
     ret = 0;
     tmp_len = sizeof(tmp_addr);
 
-    printf("nella send_pkt\n");
 
     // finchè non ho inviato e ricevuto l'ack
-    while(!send){
-
-        printf("msg == %s\n" , msg);
-        ret = sendto(socket , msg , buf_len + 1 , 0 , (struct sockaddr*)&dest_addr , dest_len);
-        printf("Ho inviato , ret vale -->%d" , ret);
-        if(ret < 0){
-            perror("Erorre nella sendto -> ");
-        }
-        /*
+    while(!send){        
         do{
-            printf("provo ad inviare %s al server" , msg);
-            
+            printf("provo ad inviare %s al server\n" , msg);
+            ret = sendto(sd , msg , buf_len , 0 , (struct sockaddr*)&dest_addr , dest_len);
         }while(ret<0);
-        */
-        printf("Fuori dal do della send");
+        
+        printf("Fuori dal do della send\n");
+
+        send = 1;
+
+/*
+        //break;
+        //setup interval
+        interval.tv_sec = 1;
+        interval.tv_usec = 5000;
 
         // ho inviato msg, aspetto di ricevere l'ack
         FD_ZERO(&wait);
-        FD_SET(socket , &wait);
+        FD_SET(sd , &wait);
+
+        printf("Il buffer received vale --> %s\n" , received);
 
         //chiamo la select in attesa dell'ack
-        ret = select(socket + 1 , &wait , NULL , NULL , NULL);
+        ret = select(sd + 1 , &wait , NULL , NULL , &interval);
+        printf("Il buffer DOPO received vale --> %s\n" , received);
+
+        break;
 
         // quando esco dalla select è sicuramente la socket che è accessibile in lettura
-        if(FD_ISSET(socket , &wait)){
+        if(FD_ISSET(sd , &wait)){
+
+            printf("il socket e' settato , received --> %s\n" , received);
             // ricevo ack
-            ret = recvfrom(socket , received ,RECEIVED_LEN ,  0 , (struct sockaddr*)&tmp_addr , &tmp_len);
+            ret = recvfrom(sd , received ,RECEIVED_LEN ,  0 , (struct sockaddr*)&tmp_addr , &tmp_len);
+
+            printf("Ho ricevuto --> %s\n" , received);
+            break;
 
             // controllo di aver ricevuto l'ack effettivamente dal processo a cui l'avevo inviato, 
             // controllando la coppia indirizzo/porta e se cioò che ho ricevuto è effettivamente l'ack
             if(dest_addr.sin_port == tmp_addr.sin_port && dest_addr.sin_addr.s_addr == tmp_addr.sin_addr.s_addr && strcmp(received , expected_ack)){
-                //printf("Ho ricevuto l'ack %s da %d" , received , tmp_addr.sin_port);
+                printf("Ho ricevuto l'ack %s da %d" , received , tmp_addr.sin_port);
                 send = 1;
             }else{
                 printf("ho ricevuto qualcosa da qualcun altro RIP");
             }
         }
-        
 
         //pulisco il set
-        FD_CLR(socket , &wait);
+        FD_CLR(sd , &wait);
+
+        */
     }
 
-    printf("furi dl do");
 }
 
 
 /**/
-/*
+
 void send_ACK(int socket , char * ack_to_send , int dest_port){
     int ret;
     struct sockaddr_in dest_addr;
@@ -137,20 +148,21 @@ void send_ACK(int socket , char * ack_to_send , int dest_port){
 
     setup_addr(&dest_addr , &addr_len , dest_port);
     ret = 0;
+
+    printf("SEND_ACK");
     // mando l'ack senza dare peso a cosa potrei ricevere indietro, tanto se il peer non ha ricevuto l'ack rimanda il msg
     do{
         ret = sendto(socket , ack_to_send , ACK_LEN + 1 , 0 , (struct sockaddr *)&dest_addr , addr_len);
     }while(ret < 0 );
 }
 
-*/
+
 int recv_pkt(int socket , char * buf , int buf_len){
     int ret;
     struct sockaddr_in sender_addr;
     socklen_t sender_addr_len;
 
-
-    printf("Nella recvpkt");
+    printf("Nella recvpkt\n");
     ret = 0;
     sender_addr_len = sizeof(sender_addr);
 
@@ -159,6 +171,9 @@ int recv_pkt(int socket , char * buf , int buf_len){
     if(ret < 0){
         perror("Errore nella recv from -> ");
     }
+
+    //printf("Nella recv pkt, ho ricevuto dalla porta %d\n" , ntohs(sender_addr.sin_port));
+
     return ntohs(sender_addr.sin_port);
 }
 
