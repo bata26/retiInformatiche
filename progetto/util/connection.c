@@ -71,13 +71,14 @@ void send_pkt(int socket , char * msg , int buf_len , int port_dest , char * exp
     fd_set wait;
     char received[RECEIVED_LEN];
 
+    // setup del dest_addr
+    setup_addr(&dest_addr , &dest_len , port_dest);
     done = 0;
     ret = 0;
 
     printf("nella send_pkt");
 
-    // setup del dest_addr
-    setup_addr(&dest_addr , &dest_len , port_dest);
+    
 
     // finchè non ho inviato e ricevuto l'ack
     while(!done){
