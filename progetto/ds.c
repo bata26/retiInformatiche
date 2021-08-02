@@ -51,12 +51,14 @@ int main(int argc , char** argv){
 
     //creo il socket di ascolto
     listen_socket = create_listener_socket(&listen_addr , &listen_addr_len , my_port);
+    printf("socket di ascolto creato --> %d\n" , listen_socket);
 
     //aggiungo il socket di ascolto e il stdin
     FD_SET(listen_socket , &master);
     FD_SET(0 , &master);
     fdmax = listen_socket + 1;
 
+    printf("Mi metto in attesa\n");
     while(1){
 
         // la select sposta da read_fds, in questo modo il set master
@@ -90,23 +92,47 @@ int main(int argc , char** argv){
         else if(FD_ISSET(listen_socket , &read_fds)){
             int sender_port;
             char request_received[HEADER_LEN];
+            int ret;
+            struct sockaddr_in sender_addr;
+            socklen_t sender_addr_len;
 
-            printf("Ricevuto qualcosa");
+
+            printf("Nella recvpkt\n");
+            ret = 0;
+            sender_addr_len = sizeof(sender_addr);
+
+            ret = recvfrom(listen_socket , request_received , HEADER_LEN + 1 , 0 , (struct sockaddr*)&sender_addr , &sender_addr_len);
+
+            printf("ret -->%d\n" , ret);
+
+            //if(ret < 0){
+            //    perror("Errore nella recv from -> ");
+            //}
+            sender_port = ntohs(sender_addr.sin_port);
+
+            printf("La poreta del sender e' -> %d\n" , sender_port);
+            printf("Ho ricevuto %s\n" , request_received);
+
+            break;
 
 
-            sender_port = recv_pkt(listen_socket , request_received , HEADER_LEN);
+            //sender_port = recv_pkt(listen_socket , request_received , HEADER_LEN);
 
+            //printf("Ho ricevuto %s dal peer %d" , request_received , sender_port);
+            /*
             if(strcmp(request_received , "CONN_REQ")){
                 printf("Ho ricevuto la CON REQ da %d" , sender_port);
                 send_ACK(listen_socket , "CON_ACK" , sender_port);
                 printf("invio ACK");
-            }
+            } */
 
 
 
             
         }
     }
+
+    return 0;
 }
 
 

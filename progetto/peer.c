@@ -34,7 +34,7 @@ fd_set read_fds;
 int fdmax;
 
 // porte che identificano i server
-int server_port;
+int server_port = 4242;
 int manager_port;
 
 
@@ -50,10 +50,15 @@ int main(int argc , char** argv){
 
     //ricavo il numero di porta
     my_port = atoi(argv[1]);
+    printf("La mia porta e' --> %d\n" , my_port);
 
     //creo il socket di ascolto
     listen_socket = create_listener_socket(&listen_addr , &listen_addr_len , my_port);
     printf("socket creato\n");
+
+    printf("La porta relativa al mio socket e' %d\n" , ntohs(listen_addr.sin_port));
+
+
     //aggiungo il socket di ascolto e il stdin
     FD_SET(listen_socket , &master);
     FD_SET(0 , &master);
