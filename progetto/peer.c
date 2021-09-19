@@ -17,6 +17,9 @@
 // connection utils
 #include "./util/connection.h"
 
+// util peer
+#include "./util/util_peer.h"
+
 // porta che identifica il peer
 int my_port;
 
@@ -138,6 +141,8 @@ int main(int argc , char** argv){
             int sender_port;
             char msg_type[MAX_COD_LEN+1];
 
+            memset(server_buffer , 0 , MAX_PKT_LEN);
+
             sender_port = recv_pkt(listen_socket , server_buffer, MAX_PKT_LEN);
 
             // ottengo il codice del pacchetto
@@ -147,6 +152,10 @@ int main(int argc , char** argv){
             if(sender_port == server_port){
 
                 if(strcmp(msg_type , "NBR_LIST") == 0){
+                    
+                    cleanNeighbors(neighbors);
+                    printf("Dopo la cleanNeighbors --> %d , %d\n" , neighbors[0] , neighbors[1] );
+
                     printf("Ho ricevuto la richiesta di %s" , msg_type);
 
                     send_ACK(listen_socket , "LIST_ACK" , server_port);
@@ -157,6 +166,12 @@ int main(int argc , char** argv){
 
                 // NEIGHBOR UPDATE
                 if(strcmp(msg_type , "NBR_UPDT") == 0){
+
+                    printf("Server_burrer--> %s\n" , server_buffer);
+
+                    cleanNeighbors(neighbors);
+                    printf("Dopo la cleanNeighbors --> %d , %d\n" , neighbors[0] , neighbors[1] );
+
                     printf("Ho ricevuto la richiesta di %s" , msg_type);
 
                     send_ACK(listen_socket , "UPDT_ACK" , server_port);

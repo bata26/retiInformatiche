@@ -1,0 +1,1 @@
+void cleanNeighbors(int * neighbors);

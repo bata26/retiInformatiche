@@ -171,3 +171,61 @@ void cleanNeighbors(int sender_port , int  neighbors[][NUM_NEIGHBORS]){
     neighbors[getPeerIndex(sender_port)][1] = -1;
 
 }
+
+
+// stampa i comandi possibili appena il DS viene avviato
+void stampaComandi(){
+    printf("*********************** DS AVVIATO ***********************\n");
+    printf("Comandi disponibili:\n\n");
+    printf("1) help -> Mostra i dettagli dei singoli comandi\n");
+    printf("2) showpeers -> Mostra i peer attualmente connessi\n");
+    printf("3) showneighbor <peer> -> Mostra i vicini di un peer specificato\n");
+    printf("4) esc -> Chiude il DS e tutti i peer\n");
+}
+
+
+// comando help
+void stampaDettagli(){
+    printf("Il DS contiene informazioni relative ai client che si connettono e condividono informazioni relative all'andamento della pandemia relativa al virus SarsCov2.\n\n");
+    printf("Tramite i comandi disponibili è possibile ottenere informazioni relative ai peer connessi e ai vicini di ogni peer.\n");
+    printf("Il comando showpeers permette di avere una lista dei peer connessi al DS mostrando il numero di porta che identifica il peer.\n");
+    printf("Il comando showneighbor mostra i vicini di un client, ogni client possiede fino ad un massimo di due peer. È possibile specificare il numero di porta di un client per avere informazioni sui vicini di un peer specifico, altrimenti il comando mostrerà i vicini di ogni client.\n");
+    printf("Il comando esc chiude il DS, questo comporta anche la terminazione di tutti i client, i quali salveranno sui specifici file le informazioni ottenute fino a quel momento.\n");
+}
+
+
+// comando showpeers
+void stampaPeer(int * peer_list){
+    int i;
+    printf("Liste dei peer connessi:\n");
+    for(i = 0 ; i < NUM_PEER ; i++){
+        if(peer_list[i] == 0) continue;
+
+        printf("-%d" , peer_list[i]);
+    }
+}
+
+//showneighbor
+void stampaNeighbors(int neighbors[][NUM_NEIGHBORS] , int peer , int* peer_list){
+    int i , j;
+
+    if(peer == 0){
+        for(i = 0 ; i < NUM_PEER ; i++){
+            if(i == 0) continue;
+            printf("PEER -> %d:\n" , peer_list[i]);
+            for(j = 0 ; j < NUM_NEIGHBORS ; j++){
+                printf("%d) %d\n" , (j+1) , neighbors[i][j]);
+            }
+        }
+    }else if(peer != 0 && peer > 5001 && peer < 5005){
+        printf("PEER -> %d:\n" , peer);
+        printf("1) %d\n" , neighbors[getPeerIndex(peer)][0]);
+        printf("2) %d\n" , neighbors[getPeerIndex(peer)][1]);
+    }else{
+        printf("Peer inserito non valido, ritentare!\n");
+    }
+
+
+
+
+}

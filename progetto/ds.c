@@ -47,6 +47,7 @@ int i , j;
 int main(int argc , char** argv){
 
     printf("avvio il server...\n");
+    stampaComandi();
 
 
     //inizializzo i set
@@ -60,7 +61,7 @@ int main(int argc , char** argv){
 
     //creo il socket di ascolto
     listen_socket = create_listener_socket(&listen_addr , &listen_addr_len , my_port);
-    printf("socket di ascolto creato --> %d\n" , listen_socket);
+    //printf("socket di ascolto creato --> %d\n" , listen_socket);
 
     //aggiungo il socket di ascolto e il stdin
     FD_SET(listen_socket , &master);
@@ -98,16 +99,45 @@ int main(int argc , char** argv){
 
             fgets(stdin_buffer , MAX_COMMAND_LEN , stdin);
             sscanf(stdin_buffer, "%s", command);
+            command[MAX_COMMAND_LEN] = '\0';
+
+            printf("ricevuto il comando: %s\n" , command);
+
+            if(strcmp(command , "help") == 0){
+                stampaDettagli();
+            }
+
+            else if(strcmp(command , "showpeers") == 0){
+                stampaPeer(peer);
+            }
+
+            else if(strcmp(command , "showneighbor") == 0){
+                int peer_to_show = 0;
+                sscanf(command , "%s %d" , command ,&peer_to_show);
+
+                stampaNeighbors(neighbors , peer_to_show , peer);
+            }
+
+            else if(strcmp(command , "esc") == 0){
+
+            }
+
+            else{
+                printf("comando non riconosciuto, prego riprovare..\n");
+            }
+
+            FD_CLR(0 , &read_fds);
+            memset(command , 0 , MAX_COMMAND_LEN);
         }
 
         // richieste dai peer
         else if(FD_ISSET(listen_socket , &read_fds)){
             int sender_port;
             char request_received[HEADER_LEN];
-            int ret;
-            struct sockaddr_in sender_addr;
-            socklen_t sender_addr_len;
-            int i;
+            //int ret;
+            //struct sockaddr_in sender_addr;
+            //socklen_t sender_addr_len;
+            //int i;
 
             sender_port = recv_pkt(listen_socket , request_received , HEADER_LEN);
 
@@ -116,7 +146,7 @@ int main(int argc , char** argv){
             // richiesta di connessione
             if(strcmp(request_received , "CONN_REQ") == 0){
 
-                int neighbors_current_peer[NUM_NEIGHBORS]; 
+                //int neighbors_current_peer[NUM_NEIGHBORS]; 
                 char buffer[MAX_LIST_LEN];
                 int i ,index , buf_len , j;
                 int updated[NUM_PEER]; // contiene informazioni su quali peer vanno aggiornati
