@@ -20,6 +20,13 @@
 // util peer
 #include "./util/util_peer.h"
 
+// util data
+#include "./util/data.h"
+
+// data
+struct datiSalvati peer_data[DATA_LEN];
+
+
 // porta che identifica il peer
 int my_port;
 
@@ -70,15 +77,18 @@ int main(int argc , char** argv){
 
     //creo il socket di ascolto
     listen_socket = create_listener_socket(&listen_addr , &listen_addr_len , my_port);
-    printf("socket creato\n");
-
-    printf("La porta relativa al mio socket %d e' %d\n" ,listen_socket ,  ntohs(listen_addr.sin_port));
-
 
     //aggiungo il socket di ascolto e il stdin
     FD_SET(listen_socket , &master);
     FD_SET(0 , &master);
     fdmax = listen_socket + 1;
+
+    stampaComandi();
+    setupData(peer_data);
+
+    //printf("Stampo datiSalvati per debug:\n");
+    //printf("peer_data[0]: type -> %d , value -> %d\n" , peer_data[0].type , peer_data[0].value);
+    //printf("peer_data[1]: type -> %d , value -> %d\n" , peer_data[1].type , peer_data[1].value);
 
     while(1){
 
@@ -130,6 +140,44 @@ int main(int argc , char** argv){
                 FD_CLR(0 , &read_fds);
 
             }
+
+            // add
+            else if(strcmp(command , "add") == 0){
+                // cosa mi serve:
+                // -Tipo (TAMPONE  , NUOVO CASO)
+                // quantità
+                
+                enum dataType type;
+                int value;
+                char tipo[MAX_COMMAND_LEN];
+
+                sscanf(stdin_buffer , "%s %s %d" , command , tipo , &value);
+                printf("stdin_buffer->%s\n" , stdin_buffer);
+                printf("Ho ricevuto nella add: type -> %s , vlaue -> %d\n" , tipo , value);
+
+                if(strcmp(tipo , "CASO") == 0){
+                    type = CASO;
+                }else if(strcmp(tipo , "TAMPONE") == 0){
+                    type = TAMPONE;
+                }else{
+                    printf("Inserire un un tipo di dato TAMPONE o CASO..\n");
+                    break;
+                }
+
+                printf("tipoe--> %s quindi type --> %d\n" , tipo , type);
+
+                peer_data[type].value += value;
+
+
+                printf("Resoconto della giornata:\n");
+                printf("Tamponi effettuati: +%d\n"  , peer_data[TAMPONE].value);
+                printf("Nuovi casi registrati: +%d\n"  , peer_data[CASO].value);
+                FD_CLR(0 , &read_fds);
+            }
+
+            memset(stdin_buffer , 0 , MAX_STDIN_LEN);
+            memset(command , 0 , MAX_COMMAND_LEN);
+
         }
 
         // richiesta dal server o da altri peer
@@ -183,9 +231,12 @@ int main(int argc , char** argv){
                 
             }
 
+            FD_CLR(listen_socket , &read_fds);
         }
 
     }
+
+    return 0;
 }
 
 

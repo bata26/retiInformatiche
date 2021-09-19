@@ -3,7 +3,7 @@
 // massima dimensione di caratteri dei comandi immessi da stdin 
 #define MAX_STDIN_LEN 100
 // massimo numero di caratteri per il comando stesso (get , start, etc..)
-#define MAX_COMMAND_LEN 10
+#define MAX_COMMAND_LEN 30
 // lunghezza header
 #define HEADER_LEN 9
 //lunghezza pacchetti ricevuti tramite recvfrom
@@ -27,4 +27,12 @@
 // dimensione dei codici di scambio
 #define MAX_COD_LEN 9
 // lunghezza massima di un pacchetto
-#define MAX_PKT_LEN 500 
+#define MAX_PKT_LEN 50
+
+
+// numero di tipi
+#define DATA_LEN 2
+// indice per il tampoe
+#define TAMPONE_IND 0
+// indice per il caso
+#define CASO_IND 1

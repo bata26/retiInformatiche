@@ -13,6 +13,10 @@ void addPeer(int peer_port , int* peer_list){
     peer_list[index] = peer_port;
 }
 
+void removePeer(int peer , int* peer_list ){
+    peer_list[getPeerIndex(peer)] = 0;
+}
+
 // cerca tra i peer connessi i due piu vicini al peer_port e li restituisce nella lista neighbors
 void getNeighbors(int peer_port , int* neighbors , int* peer_list){
     int index , cur_next , cur_prev , i , cur_prev_diff , cur_next_diff , cur_diff; // i cur indicano gli indici dei presenti in neighbors
@@ -201,7 +205,7 @@ void stampaPeer(int * peer_list){
     for(i = 0 ; i < NUM_PEER ; i++){
         if(peer_list[i] == 0) continue;
 
-        printf("-%d" , peer_list[i]);
+        printf("-%d\n" , peer_list[i]);
     }
 }
 
@@ -211,7 +215,7 @@ void stampaNeighbors(int neighbors[][NUM_NEIGHBORS] , int peer , int* peer_list)
 
     if(peer == 0){
         for(i = 0 ; i < NUM_PEER ; i++){
-            if(i == 0) continue;
+            if(peer_list[i] == 0) continue;
             printf("PEER -> %d:\n" , peer_list[i]);
             for(j = 0 ; j < NUM_NEIGHBORS ; j++){
                 printf("%d) %d\n" , (j+1) , neighbors[i][j]);

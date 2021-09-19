@@ -10,3 +10,4 @@ void stampaComandi();
 void stampaDettagli();
 void stampaPeer(int * peer_list);
 void stampaNeighbors(int neighbors[][NUM_NEIGHBORS] , int peer , int * peer_list);
+void removePeer(int peer , int* peer_list);

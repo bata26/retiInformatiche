@@ -36,6 +36,7 @@ int fdmax;
 
 // porta che identifica il manager
 int manager_port;
+int manager_connected;
 
 // strutture per la gestione dei peer
 int num_peer;
@@ -99,34 +100,41 @@ int main(int argc , char** argv){
 
             fgets(stdin_buffer , MAX_COMMAND_LEN , stdin);
             sscanf(stdin_buffer, "%s", command);
-            command[MAX_COMMAND_LEN] = '\0';
+            //command[MAX_COMMAND_LEN] = '\0';
 
             printf("ricevuto il comando: %s\n" , command);
 
             if(strcmp(command , "help") == 0){
                 stampaDettagli();
+                FD_CLR(0 , &read_fds);
             }
 
             else if(strcmp(command , "showpeers") == 0){
+                printf("Prima della stampa\n");
                 stampaPeer(peer);
+                printf("dopo la stampa\n");
+
+                FD_CLR(0 , &read_fds);
             }
 
             else if(strcmp(command , "showneighbor") == 0){
                 int peer_to_show = 0;
-                sscanf(command , "%s %d" , command ,&peer_to_show);
+                sscanf(stdin_buffer , "%s %d" , command ,&peer_to_show);
 
                 stampaNeighbors(neighbors , peer_to_show , peer);
+                FD_CLR(0 , &read_fds);
             }
 
             else if(strcmp(command , "esc") == 0){
-
+                FD_CLR(0 , &read_fds);
             }
 
             else{
                 printf("comando non riconosciuto, prego riprovare..\n");
+                FD_CLR(0 , &read_fds);
             }
 
-            FD_CLR(0 , &read_fds);
+            
             memset(command , 0 , MAX_COMMAND_LEN);
         }
 
@@ -134,10 +142,6 @@ int main(int argc , char** argv){
         else if(FD_ISSET(listen_socket , &read_fds)){
             int sender_port;
             char request_received[HEADER_LEN];
-            //int ret;
-            //struct sockaddr_in sender_addr;
-            //socklen_t sender_addr_len;
-            //int i;
 
             sender_port = recv_pkt(listen_socket , request_received , HEADER_LEN);
 
@@ -161,21 +165,6 @@ int main(int argc , char** argv){
                 send_ACK(listen_socket , "CONN_ACK" , sender_port);
                 printf("ACK inviato\n");
 
-
-
-                //////////////////// DEBUG ////////////////////////////////////
-
-                // stampo tutti i peer
-
-                printf("LISTA DEI PEER:\n");
-                for(i = 0 ; i < NUM_PEER ; i++){
-                    printf("%d) peer-> %d\n" , i , peer[i]);
-                }
-                printf("---------------------------------\n\n");
-
-
-                
-                /////////////////////////////////////////////////////////////////////
 
                 for( i = 0 ; i< NUM_PEER ; i++){
                     updated[i] = 0;
@@ -227,11 +216,16 @@ int main(int argc , char** argv){
                 
                 printf("Sto per inviare al peer il buffer:\n%s\n" , buffer);
 
+                // invio il nuovo peer al manager
+                buf_len = sprintf(buffer , "%s %d" , "UPDT_LST" , sender_port);
+                send_pkt(listen_socket , buffer , buf_len , manager_port , "MUPD_ACK");
+                printf("Ho inviato al manager il nuovo peer\n");
+
                 FD_CLR(listen_socket , &read_fds);
             }
 
             // CONN_STP
-            if(strcmp(request_received , "CONN_STP") == 0){
+            else if(strcmp(request_received , "CONN_STP") == 0){
                 int updated[NUM_PEER];
                 int i , buf_len , index;
                 char buffer[MAX_LIST_LEN];
@@ -263,9 +257,26 @@ int main(int argc , char** argv){
 
                 }
 
+                // MANAGER
+                // invio il peer da rimuovere al manager
+                buf_len = sprintf(buffer , "%s %d" , "REMV_LST" , sender_port);
+                send_pkt(listen_socket , buffer , buf_len , manager_port , "REMV_ACK");
+                printf("Ho inviato al manager il peer da rimuovere\n");
+
+                //////
+
                 FD_CLR(listen_socket , &read_fds);
 
-            }            
+            }       
+
+            // richiesta di connessione del manager
+            else if(strcmp(request_received , "MNG_CONN") == 0){
+                manager_port = sender_port;
+                send_ACK(listen_socket , "MNG_ACK" , manager_port);
+
+                printf("Ricevuta la richiesta di connessione del manager!\n");
+                manager_connected = 1;
+            }     
         }
     }
 
