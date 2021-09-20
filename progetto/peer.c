@@ -122,6 +122,9 @@ int main(int argc , char** argv){
 
                 connected = 1;
 
+                
+
+
                 FD_CLR(0 , &read_fds);
             }
             // stop
@@ -210,6 +213,7 @@ int main(int argc , char** argv){
 
                     sscanf(server_buffer , "%s %d %d" , msg_type , &neighbors[0] , &neighbors[1]);
                     printf("I miei vicini sono: \n1) %d \n2) %d\n" , neighbors[0] , neighbors[1]);
+                    
                 }
 
                 // NEIGHBOR UPDATE
@@ -227,6 +231,22 @@ int main(int argc , char** argv){
                     sscanf(server_buffer , "%s %d %d" , msg_type , &neighbors[0] , &neighbors[1]);
                     printf("I miei vicini sono: \n1) %d \n2) %d\n" , neighbors[0] , neighbors[1]);
                 }
+
+                // PORTA DEL MANAGER
+                if(strcmp(msg_type , "MNG_PORT") == 0){
+                    
+                    sscanf(server_buffer , "%s %d" , msg_type , &manager_port);
+                    send_ACK(listen_socket , "MNG_ACKP" , server_port);
+
+                    if(manager_port == 0){
+                        printf("impossibile ottenere la porta del manager\n");
+                    }else{
+                        printf("Ho ricevuto la porta del server manager ->%d\n" , manager_port);
+
+                    }
+                }
+
+                
 
                 
             }

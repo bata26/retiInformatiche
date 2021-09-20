@@ -1,0 +1,17 @@
+// tra peer e server DS
+
+CONN_REQ        CONN_ACK // il peer manda una CONN_REQ per connettersi al DS
+NBR_LIST        LIST_ACK // il DS invia la prima lista di neighbors al peer
+NBR_UPDT        UPDT_ACK // il DS invia una nuova lista di neighbors al peer
+CONN_STP        STOP_ACK // il peer richiede la disconnessione dal DS
+MNG_PORT        MNG_ACKP // il DS invia il numero di porta del manager al peerd
+
+
+// tra server DS e server manager
+
+MNG_CONN        MNG_ACK // il manager chiede la connessione al DS
+REMV_LST        REMV_ACK // il DS invia al manager la porta di un peer che si è disconnessione
+UPDT_LST        MUPD_ACK // il DS invia al manager la porta in un peer che is è conneso
+
+
+// tra server manager e peer

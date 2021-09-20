@@ -45,6 +45,11 @@ int neighbors[NUM_PEER][NUM_NEIGHBORS];
 
 int i , j;
 
+
+// buffer e buf_len
+char buffer[MAX_LIST_LEN];
+int buf_len;
+
 int main(int argc , char** argv){
 
     printf("avvio il server...\n");
@@ -151,8 +156,8 @@ int main(int argc , char** argv){
             if(strcmp(request_received , "CONN_REQ") == 0){
 
                 //int neighbors_current_peer[NUM_NEIGHBORS]; 
-                char buffer[MAX_LIST_LEN];
-                int i ,index , buf_len , j;
+                
+                int i ,index , j;
                 int updated[NUM_PEER]; // contiene informazioni su quali peer vanno aggiornati
 
                 num_peer++;
@@ -216,6 +221,15 @@ int main(int argc , char** argv){
                 
                 printf("Sto per inviare al peer il buffer:\n%s\n" , buffer);
 
+                // invio al peer la porta del manager
+
+                buf_len = sprintf(buffer , "%s %d" , "MNG_PORT" , manager_port);
+                send_pkt(listen_socket , buffer , buf_len , sender_port , "MNG_ACKP");
+
+                printf("inviato al peer %d la porta del manager\n" , sender_port);
+
+
+
                 // invio il nuovo peer al manager
                 buf_len = sprintf(buffer , "%s %d" , "UPDT_LST" , sender_port);
                 send_pkt(listen_socket , buffer , buf_len , manager_port , "MUPD_ACK");
@@ -276,7 +290,8 @@ int main(int argc , char** argv){
 
                 printf("Ricevuta la richiesta di connessione del manager!\n");
                 manager_connected = 1;
-            }     
+            }    
+
         }
     }
 
