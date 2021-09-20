@@ -136,12 +136,13 @@ int checkDates(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN] , char 
 FILE * findFirstDate(char data_iniziale[DATE_LEN] , int my_port){
     FILE* file_data;
     char filename[DATA_LEN];
-    //int found;
     char temp_data[DATE_LEN];
+    
 
     sprintf(filename , "%s%d" , FILE_PATH , my_port);
 
     file_data = fopen(filename , "r");
+    
 
     if(file_data == NULL){
         printf("Impossibile aprire il file\n");
@@ -153,11 +154,15 @@ FILE * findFirstDate(char data_iniziale[DATE_LEN] , int my_port){
         return file_data;
     }
 
-    //found = 0;
-    while(file_data == NULL){
+    while(!file_data == NULL){
+        FILE * temp_data_file;
+        temp_data_file = file_data;
+        //printf("nel while");
         fscanf(file_data , "%s" , temp_data);
+        printf("Analizzo la data %s\n" , temp_data);
 
-        if(strcmp(temp_data , data_iniziale) == 0) return file_data;
+        if(strcmp(temp_data , data_iniziale) == 0) return temp_data_file;
+        
     }
 
     printf("Impossibile trovare la data desiderata");
@@ -168,6 +173,8 @@ FILE * findFirstDate(char data_iniziale[DATE_LEN] , int my_port){
 
 void calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN] , int my_port){
     FILE * file_data;
+    int tamponi , casi;
+    char temp_data[DATE_LEN];
 
     file_data = findFirstDate(data_iniziale , my_port);
     
@@ -177,4 +184,8 @@ void calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN] , 
     }
 
     printf("file_data valid\n");
+    fscanf(file_data , "%d" , &tamponi);
+    fscanf(file_data , "%d" , &casi);
+    printf("Dati Letti:\nTamponi:%d\nCasi:%d\n"  , tamponi ,casi);
+
 }
