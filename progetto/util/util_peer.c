@@ -42,6 +42,13 @@ int checkSingleDate(char date[DATE_LEN]){
     */
     sscanf(date , "%d:%d:%d" , &num_date[0] , &num_date[1] ,&num_date[2]);
 
+    if( (num_date[2] < START_YEAR) || 
+        (num_date[1] < START_MONTH && num_date[2] == START_YEAR) ||
+        (num_date[2] == START_YEAR && num_date[1] && num_date[0] < START_DAY) 
+    ){
+        printf("La data inserita è antecedente alla data di avvio del sistema\n");
+    }
+
     if(num_date[2] < 2020 || num_date[2] > 2021){
         printf("Anno inserito non valido\n");
         return result;
@@ -87,13 +94,25 @@ int checkDates(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN] , char 
     int start_date[3];
     int end_date[3];
 
+    printf("Nella checkDates()\n");
+
+    if(strcmp(data_iniziale , "*") == 0 && strcmp(data_finale , "*") == 0){
+        printf("Inserire solo un * o ometterli entrambi\n");
+    }
+
     // controllo se una delle due e' un '*'
     if( (strcmp(data_iniziale , "*") == 0) && (checkSingleDate(data_finale)) ) return 1;
 
     if( (strcmp(data_finale , "*") == 0) && (checkSingleDate(data_iniziale)) ) return 1;
 
+    printf("Dopo il controllo con *\n");
+
     sscanf(data_iniziale , "%d:%d:%d" , &start_date[0] , &start_date[1] , &start_date[2]);
     sscanf(data_iniziale , "%d:%d:%d" , &end_date[0] , &end_date[1] , &end_date[2]);
+
+    printf("Dopo la sscanf\n");
+
+    if(!checkSingleDate(data_iniziale) || !checkSingleDate(data_finale)) return 0;
 
 
     /*
@@ -113,3 +132,49 @@ int checkDates(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN] , char 
     return 0;
 }
 
+
+FILE * findFirstDate(char data_iniziale[DATE_LEN] , int my_port){
+    FILE* file_data;
+    char filename[DATA_LEN];
+    //int found;
+    char temp_data[DATE_LEN];
+
+    sprintf(filename , "%s%d" , FILE_PATH , my_port);
+
+    file_data = fopen(filename , "r");
+
+    if(file_data == NULL){
+        printf("Impossibile aprire il file\n");
+        return NULL;
+    }
+
+
+    if(strcmp(data_iniziale , "*") == 0){
+        return file_data;
+    }
+
+    //found = 0;
+    while(file_data == NULL){
+        fscanf(file_data , "%s" , temp_data);
+
+        if(strcmp(temp_data , data_iniziale) == 0) return file_data;
+    }
+
+    printf("Impossibile trovare la data desiderata");
+    return file_data;
+
+
+}
+
+void calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN] , int my_port){
+    FILE * file_data;
+
+    file_data = findFirstDate(data_iniziale , my_port);
+    
+    if(file_data == NULL){
+        printf("Errore nella caculate Total\n");
+        return;
+    }
+
+    printf("file_data valid\n");
+}

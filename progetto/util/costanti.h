@@ -46,3 +46,7 @@
 #define AGGR_LEN 10
 // lunghezza stringa contenente la data
 #define DATE_LEN 10
+// data iniziale di operatività del sistema
+#define START_DAY 1
+#define START_MONTH 10
+#define START_YEAR 2021

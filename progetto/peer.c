@@ -208,15 +208,22 @@ int main(int argc , char** argv){
 
                 printf("Valore di ret dopo la scanf-> %d\n" , ret);
                 // numero errato di parametri
-                if(ret != 3 || ret != 5){
+                if(ret != 3 && ret != 5){
                     printf("I parametri inseriti non sono validi, riprovare..\n");
                     continue;
                 }
 
                 ret = checkDates(data_iniziale , data_finale , tipo_aggr);
+                printf("Dopo la checkdate()\nret--> %d\n" , ret);
 
                 if(ret){
                     printf("Date valide!!\n");
+                }else{
+                    printf("Date non valide\n");
+                }
+
+                if(strcmp(tipo_aggr , "TOTALE") == 0){
+                    calculateTotal(data_iniziale , data_finale , my_port);
                 }
 
 
