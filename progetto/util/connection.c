@@ -64,10 +64,13 @@ int create_listener_socket(struct sockaddr_in * sockaddr , socklen_t * len , int
 void send_pkt(int sd , char* msg , int buf_len , int port_dest , char * expected_ack){
     int ret;
     int send;
+
     struct sockaddr_in dest_addr;
     socklen_t dest_len;
+
     struct sockaddr_in tmp_addr;
     socklen_t tmp_len;
+
     fd_set wait;
     char received[RECEIVED_LEN];
     struct timeval interval;
@@ -90,9 +93,8 @@ void send_pkt(int sd , char* msg , int buf_len , int port_dest , char * expected
         printf("Fuori dal do della send\n");
 
         send = 1;
+        printf("IOn teoria dovrei tornarte ora\n");
 
-/*
-        //break;
         //setup interval
         interval.tv_sec = 1;
         interval.tv_usec = 5000;
@@ -101,28 +103,21 @@ void send_pkt(int sd , char* msg , int buf_len , int port_dest , char * expected
         FD_ZERO(&wait);
         FD_SET(sd , &wait);
 
-        printf("Il buffer received vale --> %s\n" , received);
-
         //chiamo la select in attesa dell'ack
         ret = select(sd + 1 , &wait , NULL , NULL , &interval);
-        printf("Il buffer DOPO received vale --> %s\n" , received);
-
-        break;
 
         // quando esco dalla select è sicuramente la socket che è accessibile in lettura
         if(FD_ISSET(sd , &wait)){
 
-            printf("il socket e' settato , received --> %s\n" , received);
             // ricevo ack
             ret = recvfrom(sd , received ,RECEIVED_LEN ,  0 , (struct sockaddr*)&tmp_addr , &tmp_len);
 
             printf("Ho ricevuto --> %s\n" , received);
-            break;
 
             // controllo di aver ricevuto l'ack effettivamente dal processo a cui l'avevo inviato, 
             // controllando la coppia indirizzo/porta e se cioò che ho ricevuto è effettivamente l'ack
-            if(dest_addr.sin_port == tmp_addr.sin_port && dest_addr.sin_addr.s_addr == tmp_addr.sin_addr.s_addr && strcmp(received , expected_ack)){
-                printf("Ho ricevuto l'ack %s da %d" , received , tmp_addr.sin_port);
+            if(dest_addr.sin_port == tmp_addr.sin_port && dest_addr.sin_addr.s_addr == tmp_addr.sin_addr.s_addr && strcmp(received , expected_ack) == 0){
+                printf("Ho ricevuto l'ack %s da %d\n" , received , ntohs(tmp_addr.sin_port));
                 send = 1;
             }else{
                 printf("ho ricevuto qualcosa da qualcun altro RIP");
@@ -132,7 +127,6 @@ void send_pkt(int sd , char* msg , int buf_len , int port_dest , char * expected
         //pulisco il set
         FD_CLR(sd , &wait);
 
-        */
     }
 
 }
@@ -149,10 +143,10 @@ void send_ACK(int socket , char * ack_to_send , int dest_port){
     setup_addr(&dest_addr , &addr_len , dest_port);
     ret = 0;
 
-    printf("SEND_ACK");
+    printf("SEND_ACK\n");
     // mando l'ack senza dare peso a cosa potrei ricevere indietro, tanto se il peer non ha ricevuto l'ack rimanda il msg
     do{
-        ret = sendto(socket , ack_to_send , ACK_LEN + 1 , 0 , (struct sockaddr *)&dest_addr , addr_len);
+        ret = sendto(socket , ack_to_send , ACK_LEN , 0 , (struct sockaddr *)&dest_addr , addr_len);
     }while(ret < 0 );
 }
 

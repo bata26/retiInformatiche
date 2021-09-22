@@ -49,8 +49,11 @@ int main(int argc , char** argv){
 
 
     //ricavo il numero di porta
-    //my_port = atoi(argv[1]);
-    my_port = 5001;
+    my_port = atol(argv[1]);
+
+    printf("atoi -- > %d" , atoi(argv[1]));
+
+    //my_port = 5001;
     server_port = 4242;
     printf("La mia porta e' --> %d\n" , my_port);
 
@@ -66,6 +69,8 @@ int main(int argc , char** argv){
     FD_SET(0 , &master);
     fdmax = listen_socket + 1;
 
+
+    printf("pre while\n");
     while(1){
 
         // la select sposta da read_fds, in questo modo il set master
@@ -74,8 +79,11 @@ int main(int argc , char** argv){
 
         select(fdmax , &read_fds , NULL , NULL , NULL);
 
+        printf("Dopo la select");
+
         // se è arrivato qualcosa da stdin
         if(FD_ISSET( 0 , &read_fds)){
+
             char command[MAX_COMMAND_LEN];
             int scanfres;
             int cmp_res;
@@ -91,8 +99,8 @@ int main(int argc , char** argv){
 
             if(strcmp(command , "start") == 0){
                 printf("provo ad inviare la req conn\n");
-                send_pkt(listen_socket , "CONN_REQ" , HEADER_LEN , server_port, "CON_ACK");
-                printf("Ricevuto ACK");
+                send_pkt(listen_socket , "CONN_REQ" , HEADER_LEN , server_port, "CONN_ACK");
+                printf("Ricevuto ACK\n");
 
                 //break;
                 /*
@@ -104,6 +112,8 @@ int main(int argc , char** argv){
 
             printf("fuori dalla cmp");
         }
+
+        break;
     }
 }
 

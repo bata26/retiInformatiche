@@ -15,3 +15,5 @@ all: ./ds ./peer
 ./util/connection.o: ./util/connection.c ./util/connection.h ./util/costanti.h
 	gcc -Wall -g -c ./util/connection.c -o ./util/connection.o
 
+clean:
+	-rm ./*.o ./ds ./peer  ./util/*.o

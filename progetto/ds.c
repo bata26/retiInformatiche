@@ -32,11 +32,14 @@ fd_set master;
 fd_set read_fds;
 int fdmax;
 
-// porte che identificano il manager
+// porta che identifica il manager
 int manager_port;
 
+// strutture per la gestione dei peer
+int num_peer;
+int peer[NUM_PEER];
+int neighbors[NUM_PEER][NUM_NEIGHBORS];
 
-void waitfor(){ return; }
 
 int main(int argc , char** argv){
 
@@ -49,8 +52,8 @@ int main(int argc , char** argv){
 
 
     //ricavo il numero di porta
-    //my_port = atoi(argv[1]);
-    my_port = 4242;
+    my_port = atoi(argv[1]);
+    //my_port = 4242;
 
     //creo il socket di ascolto
     listen_socket = create_listener_socket(&listen_addr , &listen_addr_len , my_port);
@@ -99,53 +102,17 @@ int main(int argc , char** argv){
             struct sockaddr_in sender_addr;
             socklen_t sender_addr_len;
 
-            printf("Pre-recv");
+            printf("Pre-recv\n");
 
             sender_port = recv_pkt(listen_socket , request_received , HEADER_LEN);
 
-            printf("Ho ricevuto dal client %d --> %s\n" , sender_port , request_received);
+            printf("Ho ricevuto dal client %d --> %s\n" , sender_port , request_received);           
 
-            waitfor();            
-
-            if(strcmp(request_received , "CONN_REQ")){
+            if(strcmp(request_received , "CONN_REQ\n")){
                 printf("Prima della send_ACK\n");
-                send_ACK(listen_socket , "CON_ACK" , sender_port);
+                send_ACK(listen_socket , "CONN_ACK" , sender_port);
                 printf("ACK inviato\n");
-            }
-
-/*
-            printf("Nella recvpkt\n");
-            ret = 0;
-            sender_addr_len = sizeof(sender_addr);
-
-            ret = recvfrom(listen_socket , request_received , HEADER_LEN + 1 , 0 , (struct sockaddr*)&sender_addr , &sender_addr_len);
-
-            printf("ret -->%d\n" , ret);
-
-            //if(ret < 0){
-            //    perror("Errore nella recv from -> ");
-            //}
-            sender_port = ntohs(sender_addr.sin_port);
-
-            printf("La poreta del sender e' -> %d\n" , sender_port);
-            printf("Ho ricevuto %s\n" , request_received);
-
-            break;
-
-
-            //sender_port = recv_pkt(listen_socket , request_received , HEADER_LEN);
-
-            //printf("Ho ricevuto %s dal peer %d" , request_received , sender_port);
-            /*
-            if(strcmp(request_received , "CONN_REQ")){
-                printf("Ho ricevuto la CON REQ da %d" , sender_port);
-                send_ACK(listen_socket , "CON_ACK" , sender_port);
-                printf("invio ACK");
-            } */
-
-
-
-            
+            }            
         }
     }
 
