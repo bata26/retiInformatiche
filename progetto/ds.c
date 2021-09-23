@@ -15,6 +15,8 @@
 
 // connection utils
 #include "./util/connection.h"
+// ds utils
+#include "./util/util_ds.h"
 
 // porta che identifica il peer
 int my_port;
@@ -101,17 +103,42 @@ int main(int argc , char** argv){
             int ret;
             struct sockaddr_in sender_addr;
             socklen_t sender_addr_len;
-
-            printf("Pre-recv\n");
+            int i;
 
             sender_port = recv_pkt(listen_socket , request_received , HEADER_LEN);
 
             printf("Ho ricevuto dal client %d --> %s\n" , sender_port , request_received);           
 
+            // richiesta di connessione
             if(strcmp(request_received , "CONN_REQ\n")){
-                printf("Prima della send_ACK\n");
+                int neighbors_current_peer[NUM_NEIGHBORS]; 
+                char buffer[MAX_LIST_LEN];
+
+                num_peer++;
+
+                // aggiungo il peer
+                addPeer(sender_port , peer);
+
+                // se tutto va bene
                 send_ACK(listen_socket , "CONN_ACK" , sender_port);
                 printf("ACK inviato\n");
+
+                // gestione neighbor:
+                // 
+                // 1) il ds crea un pacchetto formato da: "NGH_LIST" port1 port2
+                // 2) il client manda un "ACK_LIST"
+
+                void getNeighbors(sender_port , neighbors_current_peer , peer);
+
+                printf("\n\nSi e' connesso il peer %d, i due peer sono:\n1) %d \n2) %d\n" , sender_port , neighbors_current_peer[0] , neighbors_current_peer[1]);
+
+
+                // aggiorno la struct neighbors
+
+
+                // se ho solo un peer mando un pacchetto di ALONE
+                // se ho due peer devo andare a cercare l'unico peer
+                // 
             }            
         }
     }

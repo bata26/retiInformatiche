@@ -60,7 +60,8 @@ int create_listener_socket(struct sockaddr_in * sockaddr , socklen_t * len , int
  dest_addr -> sockaddr_in del dest
  addrlen -> lunghezza di dest_addr
 */
-
+// manda il messaggio msg di dimension buf_len sul socket sd alla porta port_dest , si mette in attesa di expected_ack,
+// controllando che l'ack sia arrivato dalla porta destinataria
 void send_pkt(int sd , char* msg , int buf_len , int port_dest , char * expected_ack){
     int ret;
     int send;

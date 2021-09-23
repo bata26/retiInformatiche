@@ -37,6 +37,8 @@ int fdmax;
 int server_port;
 int manager_port;
 
+int connected;
+
 
 int main(int argc , char** argv){
 
@@ -47,6 +49,7 @@ int main(int argc , char** argv){
     FD_ZERO(&master);
     FD_ZERO(&read_fds);
 
+    connected = 0;
 
     //ricavo il numero di porta
     my_port = atol(argv[1]);
@@ -69,8 +72,6 @@ int main(int argc , char** argv){
     FD_SET(0 , &master);
     fdmax = listen_socket + 1;
 
-
-    printf("pre while\n");
     while(1){
 
         // la select sposta da read_fds, in questo modo il set master
@@ -79,33 +80,31 @@ int main(int argc , char** argv){
 
         select(fdmax , &read_fds , NULL , NULL , NULL);
 
-        printf("Dopo la select");
-
         // se è arrivato qualcosa da stdin
         if(FD_ISSET( 0 , &read_fds)){
 
             char command[MAX_COMMAND_LEN];
-            int scanfres;
-            int cmp_res;
+
             printf("comando arrivato\n");
             
-            scanfres = 0;
-            cmp_res = 0;
-
             fgets(stdin_buffer , MAX_STDIN_LEN , stdin);
-            printf("ho eseguito la gets -->%s\n" ,stdin_buffer);
-            scanfres = sscanf(stdin_buffer, "%s", command);
+            sscanf(stdin_buffer, "%s", command);
             printf("ho ricevuto il comando %s\n" , command);
 
             if(strcmp(command , "start") == 0){
+
+                if(connected){
+                    printf("Already Connected!\n");
+                    continue;
+                }
+                
                 printf("provo ad inviare la req conn\n");
                 send_pkt(listen_socket , "CONN_REQ" , HEADER_LEN , server_port, "CONN_ACK");
                 printf("Ricevuto ACK\n");
 
-                //break;
-                /*
-                    DEVO RICEVERE LE PORTE DEI VICINI
-                */
+                connected = 1;
+
+                
             }else{
                 printf("else");
             }
@@ -113,7 +112,6 @@ int main(int argc , char** argv){
             printf("fuori dalla cmp");
         }
 
-        break;
     }
 }
 

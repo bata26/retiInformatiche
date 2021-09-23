@@ -1,6 +1,6 @@
 // IP LOCALE
 #define LOCALHOST "127.0.0.1"
-// massima dimensione di caratteri dei comandi immessi da stdin
+// massima dimensione di caratteri dei comandi immessi da stdin 
 #define MAX_STDIN_LEN 100
 // massimo numero di caratteri per il comando stesso (get , start, etc..)
 #define MAX_COMMAND_LEN 10
@@ -19,3 +19,8 @@
 #define NUM_PEER 5
 // numero neighbors
 #define NUM_NEIGHBORS 2
+// "base" per il numero di porta dei peer
+#define BASE_PORT 5000
+
+// massima lunghezza lista neighbors
+#define MAX_LIST_LEN 20
