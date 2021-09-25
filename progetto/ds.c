@@ -42,6 +42,7 @@ int num_peer;
 int peer[NUM_PEER];
 int neighbors[NUM_PEER][NUM_NEIGHBORS];
 
+int i , j;
 
 int main(int argc , char** argv){
 
@@ -66,6 +67,21 @@ int main(int argc , char** argv){
     FD_SET(0 , &master);
     fdmax = listen_socket + 1;
 
+    //pulisco i neighbors
+    setupNeighbors((int *)neighbors);
+
+    printf("\n\n");
+    for ( i = 0; i < NUM_PEER; i++)
+    {
+        
+        printf("STO ESAMINANDO IL PEER %d\n" , peer[i]);
+
+        for(j = 0 ; j < NUM_NEIGHBORS ; j++){
+            printf("vicino %d ---> %d\n" , j , neighbors[i][j]);
+        }
+        printf("\n");
+    }
+
     printf("Mi metto in attesa\n");
     while(1){
 
@@ -82,18 +98,6 @@ int main(int argc , char** argv){
 
             fgets(stdin_buffer , MAX_COMMAND_LEN , stdin);
             sscanf(stdin_buffer, "%s", command);
-
-
-            /*
-            if(strcmp(command , CLIENT_START_COMMAND) == 0){
-                printf("provo ad inviare la req conn");
-                send_pkt(listen_socket , "CON_REQ" , HEADER_LEN , my_port, "CON_ACK");
-
-                
-                //    DEVO RICEVERE LE PORTE DEI VICINI
-                
-            } 
-            */
         }
 
         // richieste dai peer
@@ -110,7 +114,7 @@ int main(int argc , char** argv){
             printf("Ho ricevuto dal client %d --> %s\n" , sender_port , request_received);           
 
             // richiesta di connessione
-            if(strcmp(request_received , "CONN_REQ\n")){
+            if(strcmp(request_received , "CONN_REQ") == 0){
                 int neighbors_current_peer[NUM_NEIGHBORS]; 
                 char buffer[MAX_LIST_LEN];
                 int i , updated , index , buf_len , j;
@@ -155,14 +159,6 @@ int main(int argc , char** argv){
                     //}
                 }
 
-                if(neighbors[index][0] == -1 && neighbors[index][1] == -1)
-                    buf_len = sprintf(buffer , "%s" , "NBR_LIST");
-                else if(neighbors[index][0] != -1)
-                    buf_len = sprintf(buffer , "%s %d" , "NBR_LIST" , neighbors[index][0]);
-                else   
-                    buf_len = sprintf(buffer , "%s %d %d" , "NBR_LIST" , neighbors[index][0] , neighbors[index][1]);
-
-
                 // STAMPO TUTTI I NEIGHBORS
                 printf("\n\n");
                 for ( i = 0; i < NUM_PEER; i++)
@@ -175,15 +171,30 @@ int main(int argc , char** argv){
                     }
                     printf("\n");
                 }
+
+                if(neighbors[index][0] == -1 && neighbors[index][1] == -1)
+                    buf_len = sprintf(buffer , "%s" , "NBR_LIST");
+                else if(neighbors[index][1] == -1)
+                    buf_len = sprintf(buffer , "%s %d" , "NBR_LIST" , neighbors[index][0]);
+                else   
+                    buf_len = sprintf(buffer , "%s %d %d" , "NBR_LIST" , neighbors[index][0] , neighbors[index][1]);
                 
+                printf("Sto per inviare al peer il buffer:\n%s\n" , buffer);
+                send_pkt(listen_socket , buffer , buf_len , sender_port , "LIST_ACK");
 
+                FD_CLR(listen_socket , &read_fds);
+            }
 
-                // aggiorno la struct neighbors
+            // CONN_STP
+            if(strcmp(request_received , "CONN_STP") == 0){
+                printf("Il peer %d ha richiesto una disconnessione.. \n");
 
+                send_ACK(listen_socket , "STOP_ACK" , sender_port);
 
-                // se ho solo un peer mando un pacchetto di ALONE
-                // se ho due peer devo andare a cercare l'unico peer
-                // 
+                peer[getPeerIndex(sender_port)] = 0;
+
+                FD_CLR(listen_socket , &read_fds);
+
             }            
         }
     }

@@ -24,3 +24,7 @@
 
 // massima lunghezza lista neighbors
 #define MAX_LIST_LEN 20
+// dimensione dei codici di scambio
+#define MAX_COD_LEN 9
+// lunghezza massima di un pacchetto
+#define MAX_PKT_LEN 500 

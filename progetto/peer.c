@@ -27,6 +27,8 @@ socklen_t listen_addr_len;
 
 //buffer per i comandi da stdin
 char stdin_buffer[MAX_STDIN_LEN];
+// buffer per i comandi da server
+char server_buffer[MAX_PKT_LEN];
 
 //set per gestire socket e stdin
 fd_set master;
@@ -37,8 +39,11 @@ int fdmax;
 int server_port;
 int manager_port;
 
+// booleano che indica se e' avvenuta la connession al DS o ancora no
 int connected;
 
+// struttura per mantenere traccia dei vici
+int neighbors[NUM_NEIGHBORS]; 
 
 int main(int argc , char** argv){
 
@@ -91,6 +96,7 @@ int main(int argc , char** argv){
             sscanf(stdin_buffer, "%s", command);
             printf("ho ricevuto il comando %s\n" , command);
 
+            // start
             if(strcmp(command , "start") == 0){
 
                 if(connected){
@@ -98,18 +104,60 @@ int main(int argc , char** argv){
                     continue;
                 }
                 
-                printf("provo ad inviare la req conn\n");
                 send_pkt(listen_socket , "CONN_REQ" , HEADER_LEN , server_port, "CONN_ACK");
                 printf("Ricevuto ACK\n");
 
                 connected = 1;
 
+                FD_CLR(0 , &read_fds);
+            }
+            // stop
+            else if(strcmp(command , "stop") == 0){
+
+                if(!connected){
+                    printf("Not connected yet..\n");
+                    continue;
+                }
+
+                printf("Tentativo di disconnessione\n");
+                send_pkt(listen_socket , "CONN_STP" , HEADER_LEN , server_port, "STOP_ACK");
+
+                connected = 0;
+
+                FD_CLR(0 , &read_fds);
+
+            }
+        }
+
+        // richiesta dal server o da altri peer
+        /*
+            se viene dal socket in socket buffer metto tutto il pacchetto, poi ottengo il codice del pacchetto nel buffer msg_type
+
+        */
+        else if(FD_ISSET(listen_socket , &read_fds)){
+            int sender_port;
+            char msg_type[MAX_COD_LEN+1];
+
+            sender_port = recv_pkt(listen_socket , server_buffer, MAX_PKT_LEN);
+
+            // ottengo il codice del pacchetto
+            sscanf(server_buffer , "%s" , msg_type);
+            msg_type[MAX_COD_LEN] = '\0';
+
+            if(sender_port == server_port){
+
+                if(strcmp(msg_type , "NBR_LIST") == 0){
+                    printf("Ho ricevuto la richiesta di %s" , msg_type);
+
+                    send_ACK(listen_socket , "LIST_ACK" , server_port);
+
+                    sscanf(server_buffer , "%s %d %d" , msg_type , &neighbors[0] , &neighbors[1]);
+                    printf("I miei vicini sono: \n1) %d \n2) %d\n" , neighbors[0] , neighbors[1]);
+                }
+
                 
-            }else{
-                printf("else");
             }
 
-            printf("fuori dalla cmp");
         }
 
     }

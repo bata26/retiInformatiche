@@ -101,3 +101,14 @@ int checkIfUpdated(int* neighbors , int* new_neighbors){
 
     return updated;
 }
+
+void setupNeighbors(int* neighbors){
+    int i , j;
+
+    for(i = 0 ; i < NUM_PEER ; i++){
+        for(j = 0 ; j < NUM_NEIGHBORS ; j++){
+            printf("i-> %d , j-> %d\n" , i , j);
+            neighbors[i][j] = -1;
+        }
+    }
+}
