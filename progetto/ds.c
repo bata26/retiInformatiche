@@ -113,6 +113,7 @@ int main(int argc , char** argv){
             if(strcmp(request_received , "CONN_REQ\n")){
                 int neighbors_current_peer[NUM_NEIGHBORS]; 
                 char buffer[MAX_LIST_LEN];
+                int i , updated , index , buf_len , j;
 
                 num_peer++;
 
@@ -123,14 +124,58 @@ int main(int argc , char** argv){
                 send_ACK(listen_socket , "CONN_ACK" , sender_port);
                 printf("ACK inviato\n");
 
+                // stampo tutti i peer
+
+                printf("LISTA DEI PEER:\n");
+                for(i = 0 ; i < NUM_PEER ; i++){
+                    printf("%d) peer-> %d\n" , i , peer[i]);
+                }
+                printf("---------------------------------\n\n");
+
                 // gestione neighbor:
                 // 
                 // 1) il ds crea un pacchetto formato da: "NGH_LIST" port1 port2
                 // 2) il client manda un "ACK_LIST"
+                
+                // ogni volta che aggiungo un peer controllo se i vicini sono cambiati o no
+                for(i = 0 ; i < NUM_PEER ; i++){
+                    printf("cerco di aggiornare il peer %d" , peer[i]);
 
-                void getNeighbors(sender_port , neighbors_current_peer , peer);
+                    if(peer[i] == 0) continue;
 
-                printf("\n\nSi e' connesso il peer %d, i due peer sono:\n1) %d \n2) %d\n" , sender_port , neighbors_current_peer[0] , neighbors_current_peer[1]);
+                    index = getPeerIndex(sender_port);
+
+                    getNeighbors(peer[i] , neighbors_current_peer , peer);
+
+                    printf("Sto esaminando il peer %d e i vicini che ho trovato sono : %d , %d\n" , peer[i] , neighbors_current_peer[0] , neighbors_current_peer[1]);
+                    updated = checkIfUpdated(neighbors[i] , neighbors_current_peer);
+
+                    // se aggiornato, quindi un tipo di messaggio NGB_UPD
+                    //if(updated){
+                    //}
+                }
+
+                if(neighbors[index][0] == -1 && neighbors[index][1] == -1)
+                    buf_len = sprintf(buffer , "%s" , "NBR_LIST");
+                else if(neighbors[index][0] != -1)
+                    buf_len = sprintf(buffer , "%s %d" , "NBR_LIST" , neighbors[index][0]);
+                else   
+                    buf_len = sprintf(buffer , "%s %d %d" , "NBR_LIST" , neighbors[index][0] , neighbors[index][1]);
+
+
+                // STAMPO TUTTI I NEIGHBORS
+                printf("\n\n");
+                for ( i = 0; i < NUM_PEER; i++)
+                {
+                   
+                    printf("STO ESAMINANDO IL PEER %d\n" , peer[i]);
+
+                    for(j = 0 ; j < NUM_NEIGHBORS ; j++){
+                        printf("vicino %d ---> %d\n" , j , neighbors[i][j]);
+                    }
+                    printf("\n");
+                }
+                
 
 
                 // aggiorno la struct neighbors
