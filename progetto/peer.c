@@ -155,6 +155,16 @@ int main(int argc , char** argv){
                     printf("I miei vicini sono: \n1) %d \n2) %d\n" , neighbors[0] , neighbors[1]);
                 }
 
+                // NEIGHBOR UPDATE
+                if(strcmp(msg_type , "NBR_UPDT") == 0){
+                    printf("Ho ricevuto la richiesta di %s" , msg_type);
+
+                    send_ACK(listen_socket , "UPDT_ACK" , server_port);
+
+                    sscanf(server_buffer , "%s %d %d" , msg_type , &neighbors[0] , &neighbors[1]);
+                    printf("I miei vicini sono: \n1) %d \n2) %d\n" , neighbors[0] , neighbors[1]);
+                }
+
                 
             }
 

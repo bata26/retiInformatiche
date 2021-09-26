@@ -68,7 +68,7 @@ int main(int argc , char** argv){
     fdmax = listen_socket + 1;
 
     //pulisco i neighbors
-    setupNeighbors((int *)neighbors);
+    setupNeighbors(neighbors);
 
     printf("\n\n");
     for ( i = 0; i < NUM_PEER; i++)
@@ -115,11 +115,14 @@ int main(int argc , char** argv){
 
             // richiesta di connessione
             if(strcmp(request_received , "CONN_REQ") == 0){
+
                 int neighbors_current_peer[NUM_NEIGHBORS]; 
                 char buffer[MAX_LIST_LEN];
-                int i , updated , index , buf_len , j;
+                int i ,index , buf_len , j;
+                int updated[NUM_PEER]; // contiene informazioni su quali peer vanno aggiornati
 
                 num_peer++;
+                index = getPeerIndex(sender_port);
 
                 // aggiungo il peer
                 addPeer(sender_port , peer);
@@ -127,6 +130,10 @@ int main(int argc , char** argv){
                 // se tutto va bene
                 send_ACK(listen_socket , "CONN_ACK" , sender_port);
                 printf("ACK inviato\n");
+
+
+
+                //////////////////// DEBUG ////////////////////////////////////
 
                 // stampo tutti i peer
 
@@ -136,27 +143,43 @@ int main(int argc , char** argv){
                 }
                 printf("---------------------------------\n\n");
 
-                // gestione neighbor:
-                // 
-                // 1) il ds crea un pacchetto formato da: "NGH_LIST" port1 port2
-                // 2) il client manda un "ACK_LIST"
+
                 
-                // ogni volta che aggiungo un peer controllo se i vicini sono cambiati o no
-                for(i = 0 ; i < NUM_PEER ; i++){
-                    printf("cerco di aggiornare il peer %d" , peer[i]);
+                /////////////////////////////////////////////////////////////////////
 
-                    if(peer[i] == 0) continue;
+                for( i = 0 ; i< NUM_PEER ; i++){
+                    updated[i] = 0;
+                }
 
-                    index = getPeerIndex(sender_port);
+                updated[index] = 1;
 
-                    getNeighbors(peer[i] , neighbors_current_peer , peer);
 
-                    printf("Sto esaminando il peer %d e i vicini che ho trovato sono : %d , %d\n" , peer[i] , neighbors_current_peer[0] , neighbors_current_peer[1]);
-                    updated = checkIfUpdated(neighbors[i] , neighbors_current_peer);
 
-                    // se aggiornato, quindi un tipo di messaggio NGB_UPD
-                    //if(updated){
-                    //}
+                updateNeighbors(peer , neighbors , updated);
+
+                for( i = 0 ; i< NUM_PEER ; i++){
+                    printf("DOPO: i->%d , updated[i]->%d\n" , i , updated[i]);
+                }
+
+
+                for(i = 0 ; i <  NUM_PEER ; i++){
+                    if(updated[i] == 0) continue;
+
+                    printf("PRIMA: buffer--> %s , buf_len --> %d\n" , buffer , buf_len);
+
+                    if(i == index){ // il peer che si e' appena connesso dovra' ricevere un pacchetto di LIST non di update
+                        setupNeighborsBuffer(buffer , &buf_len , "NBR_LIST" , neighbors , i); 
+                        send_pkt(listen_socket , buffer , buf_len , peer[i] , "LIST_ACK");  
+                    }else{
+                        setupNeighborsBuffer(buffer , &buf_len , "NBR_UPDT" , neighbors , i);   
+                        send_pkt(listen_socket , buffer , buf_len , peer[i] , "UPDT_ACK");
+                    }
+
+                    printf("DOPO: buffer--> %s , buf_len --> %d\n" , buffer , buf_len);
+
+                    
+
+
                 }
 
                 // STAMPO TUTTI I NEIGHBORS
@@ -171,27 +194,44 @@ int main(int argc , char** argv){
                     }
                     printf("\n");
                 }
-
-                if(neighbors[index][0] == -1 && neighbors[index][1] == -1)
-                    buf_len = sprintf(buffer , "%s" , "NBR_LIST");
-                else if(neighbors[index][1] == -1)
-                    buf_len = sprintf(buffer , "%s %d" , "NBR_LIST" , neighbors[index][0]);
-                else   
-                    buf_len = sprintf(buffer , "%s %d %d" , "NBR_LIST" , neighbors[index][0] , neighbors[index][1]);
                 
                 printf("Sto per inviare al peer il buffer:\n%s\n" , buffer);
-                send_pkt(listen_socket , buffer , buf_len , sender_port , "LIST_ACK");
 
                 FD_CLR(listen_socket , &read_fds);
             }
 
             // CONN_STP
             if(strcmp(request_received , "CONN_STP") == 0){
-                printf("Il peer %d ha richiesto una disconnessione.. \n");
+                int updated[NUM_PEER];
+                int i , buf_len , index;
+                char buffer[MAX_LIST_LEN];
+
+                printf("Il peer %d ha richiesto una disconnessione.. \n" , sender_port);
 
                 send_ACK(listen_socket , "STOP_ACK" , sender_port);
 
-                peer[getPeerIndex(sender_port)] = 0;
+                // elimino il peer, devo aggiornare neighbors
+                index = getPeerIndex(sender_port); 
+                peer[index] = 0;
+
+
+                // rimuovo il peer dalla struct dei neighbors
+                cleanNeighbors(sender_port , neighbors);
+
+                for( i = 0 ; i< NUM_PEER ; i++){
+                    updated[i] = 0;
+                }
+
+                updateNeighbors(peer , neighbors , updated);
+
+                for(i = 0 ; i < NUM_PEER ; i++){
+                    if(updated[i] == 0) continue;
+
+                    setupNeighborsBuffer(buffer , &buf_len , "NBR_UPDT" , neighbors , i);   
+                    send_pkt(listen_socket , buffer , buf_len , peer[i] , "UPDT_ACK");
+
+
+                }
 
                 FD_CLR(listen_socket , &read_fds);
 

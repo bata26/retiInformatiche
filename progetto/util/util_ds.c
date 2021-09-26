@@ -7,12 +7,13 @@ int getPeerIndex(int peer_port){
     return ((peer_port % BASE_PORT) - 1);
 }
 
+// aggiunge un peer alla lista dei peer
 void addPeer(int peer_port , int* peer_list){
     int index = getPeerIndex(peer_port); 
     peer_list[index] = peer_port;
 }
 
-// cerca tra i peer connessi i due piu vicini al peer_port
+// cerca tra i peer connessi i due piu vicini al peer_port e li restituisce nella lista neighbors
 void getNeighbors(int peer_port , int* neighbors , int* peer_list){
     int index , cur_next , cur_prev , i , cur_prev_diff , cur_next_diff , cur_diff; // i cur indicano gli indici dei presenti in neighbors
 
@@ -84,9 +85,11 @@ void getNeighbors(int peer_port , int* neighbors , int* peer_list){
 
 }
 
-
+// controlla se rispetto ai vecchi peer la connessione/disconnessione ha portato ad un cambiamento
 int checkIfUpdated(int* neighbors , int* new_neighbors){
     int updated = 0;
+
+
 
     if(neighbors[0] != new_neighbors[0]){
         printf("diversi quindi scambio");
@@ -102,7 +105,9 @@ int checkIfUpdated(int* neighbors , int* new_neighbors){
     return updated;
 }
 
-void setupNeighbors(int* neighbors){
+
+// "pulisce" la matrice neighbors 
+void setupNeighbors(int neighbors[][NUM_NEIGHBORS]){
     int i , j;
 
     for(i = 0 ; i < NUM_PEER ; i++){
@@ -111,4 +116,58 @@ void setupNeighbors(int* neighbors){
             neighbors[i][j] = -1;
         }
     }
+}
+
+// controlla tutta la lista dei peer e aggiorna le struttre dati
+void updateNeighbors(int* peer_list , int  neighbors[][NUM_NEIGHBORS] , int * updated){
+    int i;
+    int neighbors_current_peer[NUM_NEIGHBORS];
+    // ogni volta che aggiungo un peer controllo se i vicini sono cambiati o no
+    for(i = 0 ; i < NUM_PEER ; i++){
+        printf("cerco di aggiornare il peer %d" , peer_list[i]);
+
+        if(peer_list[i] == 0) continue;
+
+        // aggiorno la struttura
+        getNeighbors(peer_list[i] , neighbors_current_peer , peer_list);
+
+        // controllo se ho cambiato qualcosa, se ho cambiato qualcosa mando un pacchetto di UPDATE
+
+
+        printf("Sto esaminando il peer %d e i vicini che ho trovato sono : %d , %d\n" , peer_list[i] , neighbors_current_peer[0] , neighbors_current_peer[1]);
+        if(checkIfUpdated(neighbors[i] , neighbors_current_peer)){
+            updated[i] = 1;
+        }
+    }
+}
+
+
+// preparo il buffer per eventuali Neighbors update o List
+void setupNeighborsBuffer(char * buffer , int* len , char * msg , int  neighbors[][NUM_NEIGHBORS] , int index){
+    // invio la lista dei neighbors a chi si e' appena connesso
+    if(neighbors[index][0] == -1 && neighbors[index][1] == -1)
+        *len = sprintf(buffer , "%s" , msg);
+    else if(neighbors[index][1] == -1)
+        *len = sprintf(buffer , "%s %d" , msg  , neighbors[index][0]);
+    else   
+        *len = sprintf(buffer , "%s %d %d" ,msg  , neighbors[index][0] , neighbors[index][1]);
+
+}
+
+// rimuovo il peer disconnesso dai neighbors
+
+void cleanNeighbors(int sender_port , int  neighbors[][NUM_NEIGHBORS]){
+    int i , j;
+    
+    for(i = 0 ; i < NUM_PEER; i++){
+        for(j = 0 ; j < NUM_NEIGHBORS ; j++){
+            if(neighbors[i][j] == sender_port){
+                neighbors[i][j] = -1;
+            }
+        }
+    }
+
+    neighbors[getPeerIndex(sender_port)][0] = -1;
+    neighbors[getPeerIndex(sender_port)][1] = -1;
+
 }
