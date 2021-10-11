@@ -15,3 +15,5 @@ UPDT_LST        MUPD_ACK // il DS invia al manager la porta in un peer che is è
 
 
 // tra server manager e peer
+TDAY_CLS        TDAY_ACK // il manager manda al peer il pacchetto di chiusura dei register
+TDAY_AGG        MDAY_ACK // il peer manda al manager i dati aggregati del giorno

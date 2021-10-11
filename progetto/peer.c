@@ -39,6 +39,8 @@ socklen_t listen_addr_len;
 char stdin_buffer[MAX_STDIN_LEN];
 // buffer per i comandi da server
 char server_buffer[MAX_PKT_LEN];
+// buffer per i comandi da manager
+char manager_buffer[MAX_STDIN_LEN];
 
 //set per gestire socket e stdin
 fd_set master;
@@ -69,7 +71,7 @@ int main(int argc , char** argv){
     //ricavo il numero di porta
     my_port = atol(argv[1]);
 
-    printf("atoi -- > %d" , atoi(argv[1]));
+    //printf("atoi -- > %d" , atoi(argv[1]));
 
     //my_port = 5001;
     server_port = 4242;
@@ -201,7 +203,8 @@ int main(int argc , char** argv){
             msg_type[MAX_COD_LEN] = '\0';
 
             if(sender_port == server_port){
-
+                
+                // LISTA DEI NEIGHBOR
                 if(strcmp(msg_type , "NBR_LIST") == 0){
                     
                     cleanNeighbors(neighbors);
@@ -245,10 +248,23 @@ int main(int argc , char** argv){
 
                     }
                 }
+            }
 
-                
+            // manager
+            else if(sender_port == manager_port){
 
-                
+                memset(manager_buffer , 0 , MAX_STDIN_LEN);
+
+                if(strcmp(msg_type , "TDAY_CLS") == 0){
+                    int buf_len;
+
+                    send_ACK(listen_socket , "TDAY_ACK" , manager_port);
+                    printf("Ho ricevuto la richiesta di close dal manager\nInvio al manager i dati odierni\n");
+
+                    buf_len = sprintf(manager_buffer , "%s %d %d" , "TDAY_AGG" , peer_data[0].value , peer_data[1].value);
+                    send_pkt(listen_socket , manager_buffer , buf_len , manager_port , "MDAY_ACK");
+                    printf("Dati inviati\n");
+                }
             }
 
             FD_CLR(listen_socket , &read_fds);

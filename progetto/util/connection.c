@@ -24,7 +24,7 @@ void setup_addr(struct sockaddr_in * sockaddr , socklen_t * len , int port){
 
     (*len) = sizeof((*sockaddr));
 
-    printf("Ho creato un socket relativo alla porta -> %d\n" , port);
+    //printf("Ho creato un socket relativo alla porta -> %d\n" , port);
 }
 
 
@@ -46,7 +46,7 @@ int create_listener_socket(struct sockaddr_in * sockaddr , socklen_t * len , int
 
     }
 
-    printf("nella listen socket\n");
+    //printf("nella listen socket\n");
 
     return sd;
 

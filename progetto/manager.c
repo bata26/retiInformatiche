@@ -42,6 +42,19 @@ int num_peer;
 int peer[NUM_PEER];
 int neighbors[NUM_PEER][NUM_NEIGHBORS];
 
+// strutture per la gestione dell'orario
+time_t t;
+struct tm * timeinfo;
+struct timeval timeout;
+int current_hour;
+int current_min;
+int current_day;
+
+// flag che mi dice se il DS ha chiuso prima di me
+int server_flag;
+int day_close; // giorno in cui il server ha chiuso
+
+
 int i , j;
 
 int main(int argc , char** argv){
@@ -79,16 +92,16 @@ int main(int argc , char** argv){
         // non viene modificato
         read_fds = master; 
 
-        select(fdmax , &read_fds , NULL , NULL , NULL);
+        // ogni 5 minuti eseguo operazioni di controllo per l'orario, altrimenti rimarrei fermo nella select finche non arrivano messaggi
+        timeout.tv_sec = 300;
+        timeout.tv_usec = 0;
+        
+        
 
-        // se è arrivato qualcosa da stdin
-        if(FD_ISSET( 0 , &read_fds)){
-
-            
-        }
+        select(fdmax , &read_fds , NULL , NULL , &timeout);
 
         // richieste dai peer
-        else if(FD_ISSET(listen_socket , &read_fds)){
+        if(FD_ISSET(listen_socket , &read_fds)){
             int sender_port;
             char request_received[HEADER_LEN];
 
@@ -108,7 +121,7 @@ int main(int argc , char** argv){
 
                 printf("Ho aggiunto il peer %d alla lista dei peer\n" , new_port);
 
-                FD_CLR(listen_socket , &read_fds);
+                //FD_CLR(listen_socket , &read_fds);
             }
 
             else if(strcmp(request_received , "REMV_LST") == 0 && sender_port == server_port){
@@ -131,15 +144,60 @@ int main(int argc , char** argv){
                     printf("%d) %d\n" , i , peer[i]);
                 }
 
-                FD_CLR(listen_socket , &read_fds);
+                //FD_CLR(listen_socket , &read_fds);
 
+
+            }  
+
+            else if(strcmp(request_received , "TDAY_AGG") == 0){
+                int casi , tamponi;
+
+                send_ACK(listen_socket , "MDAY_ACK" , sender_port);
+                sscanf(manager_buffer , "%s %d %d" , request_received , &casi , &tamponi);
+
+                printf("Il peer %d mi ha inviato %d casi e %d tamponi\n" , sender_port , casi  ,tamponi);
 
             }
-
-
-            
-                      
         }
+
+        // stdin
+        else if(FD_ISSET( 0 , &read_fds)){
+            char command[MAX_COMMAND_LEN];
+
+            fgets(manager_buffer , MAX_STDIN_LEN , stdin);
+            sscanf(manager_buffer , "%s" , command);
+
+            if(strcmp(command , "close") == 0){
+                // chiude i peer
+
+                for(i = 0 ; i <  NUM_PEER ; i++){
+                    if(peer[i] == 0) continue;
+
+                    send_pkt(listen_socket , "TDAY_CLS" , HEADER_LEN , peer[i] , "TDAY_ACK");
+
+                }
+            }
+        }
+
+        //GESTIONE DEL TEMPO
+
+        /*
+        time(&t);
+        timeinfo = localtime(&t);
+
+        printf("Current time --> %s\n" , ctime(&t));
+        printf("Time -> %d\n" , timeinfo->tm_mon);
+
+        current_day = timeinfo->tm_mday;
+        current_min = timeinfo->tm_min;
+        current_hour = timeinfo->tm_hour;
+
+        printf("Current_day -> %d \nCurrent_hour->%d\nCurrent_min->%d\n" , current_day , current_hour , current_min);
+
+        */
+
+
+
     }
 
     return 0;
