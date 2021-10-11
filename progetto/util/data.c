@@ -1,4 +1,8 @@
 #include "costanti.h"
+#include "stdio.h"
+
+#include <sys/time.h>
+#include <time.h>
 
 
 // enumerazione per tipo
@@ -16,4 +20,23 @@ void setupData( struct datiSalvati usr_data[DATA_LEN]){
     usr_data[1].type = CASO;
     usr_data[0].value = 0;
     usr_data[1].value = 0;
+}
+
+void writeOnFile(struct datiSalvati usr_data[DATA_LEN] , int port){
+    FILE * file_data;
+    char filename[DATA_LEN];
+    time_t t;
+    struct tm * timeinfo;
+
+    time(&t);
+    timeinfo = localtime(&t);
+
+    //printf("Info:\nanno:%d\nmese:%d\ngiorno:%d\n" ,timeinfo->tm_year+1900 , timeinfo->tm_mon+1 , timeinfo->tm_mday );
+    
+    sprintf(filename , "%s%d" , FILE_PATH , port);
+    
+    file_data = fopen(filename , "a");
+    fprintf(file_data , "%d:%d:%d %d %d" , timeinfo->tm_year+1900 , timeinfo->tm_mon+1 , timeinfo->tm_mday  ,  usr_data[CASO_IND].value , usr_data[TAMPONE_IND].value);
+
+    fclose(file_data);
 }

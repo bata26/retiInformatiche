@@ -36,3 +36,8 @@
 #define TAMPONE_IND 0
 // indice per il caso
 #define CASO_IND 1
+
+// path per il file
+#define FILE_PATH "./myfile/"
+// lunghezza nome del file
+#define FILE_LEN 50

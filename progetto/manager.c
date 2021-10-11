@@ -15,8 +15,12 @@
 
 // connection utils
 #include "./util/connection.h"
+
 // ds utils
 #include "./util/util_ds.h"
+
+// data utils
+#include "./util/data.h"
 
 // porta che identifica il peer
 int my_port;
@@ -28,6 +32,7 @@ socklen_t listen_addr_len;
 
 //buffer per i comandi da stdin
 char manager_buffer[MAX_STDIN_LEN];
+int buf_len = MAX_STDIN_LEN;
 
 //set per gestire socket e stdin
 fd_set master;
@@ -55,6 +60,9 @@ int server_flag;
 int day_close; // giorno in cui il server ha chiuso
 
 
+// struttura oer la gestione dei dati
+struct datiSalvati dati_giornalieri[DATA_LEN];
+
 int i , j;
 
 int main(int argc , char** argv){
@@ -69,7 +77,10 @@ int main(int argc , char** argv){
     //ricavo il numero di porta
     my_port = atoi(argv[1]);
     server_port = atoi(argv[2]); 
-    //my_port = 4242;
+    
+
+    // setup data
+    setupData(dati_giornalieri);
 
     //creo il socket di ascolto
     listen_socket = create_listener_socket(&listen_addr , &listen_addr_len , my_port);
@@ -105,7 +116,7 @@ int main(int argc , char** argv){
             int sender_port;
             char request_received[HEADER_LEN];
 
-            sender_port = recv_pkt(listen_socket , manager_buffer , MAX_STDIN_LEN);
+            sender_port = recv_send_pkt(listen_socket , manager_buffer , MAX_STDIN_LEN);
             sscanf(manager_buffer , "%s" , request_received);
             printf("Ho ricevuto da %d il buffer %s\n" , sender_port , manager_buffer);
 
@@ -149,34 +160,52 @@ int main(int argc , char** argv){
 
             }  
 
-            else if(strcmp(request_received , "TDAY_AGG") == 0){
-                int casi , tamponi;
-
-                send_ACK(listen_socket , "MDAY_ACK" , sender_port);
-                sscanf(manager_buffer , "%s %d %d" , request_received , &casi , &tamponi);
-
-                printf("Il peer %d mi ha inviato %d casi e %d tamponi\n" , sender_port , casi  ,tamponi);
-
-            }
         }
 
         // stdin
         else if(FD_ISSET( 0 , &read_fds)){
             char command[MAX_COMMAND_LEN];
+            //pid_t son_proc[NUM_PEER];
+            int casi , tamponi;
+
+            memset(manager_buffer ,  0 , MAX_STDIN_LEN);
 
             fgets(manager_buffer , MAX_STDIN_LEN , stdin);
             sscanf(manager_buffer , "%s" , command);
 
             if(strcmp(command , "close") == 0){
-                // chiude i peer
+                for(i = 0 ; i <  NUM_PEER ; i++){
+                    if(peer[i] == 0) continue;
+
+
+                    send_pkt(listen_socket , "TDAY_CLS" , HEADER_LEN , peer[i] , "TDAY_ACK");
+                    recv_pkt(listen_socket , manager_buffer , buf_len , peer[i] , "TDAY_AGG" , "MDAY_ACK");
+
+                    sscanf(manager_buffer , "%s %d %d" , command , &casi , &tamponi);
+                   
+                    printf("Buffer ricevuto: %s\n" , manager_buffer);
+                    dati_giornalieri[0].value += tamponi;
+                    dati_giornalieri[1].value += casi;
+
+
+                }
+
+                // ho aggregato tutti i dati, li rinvio ai peer
 
                 for(i = 0 ; i <  NUM_PEER ; i++){
                     if(peer[i] == 0) continue;
 
-                    send_pkt(listen_socket , "TDAY_CLS" , HEADER_LEN , peer[i] , "TDAY_ACK");
+                    memset(manager_buffer ,  0 , MAX_STDIN_LEN);
 
+                    buf_len = sprintf(manager_buffer , "%s %d %d" , "DAY_DATA" , dati_giornalieri[CASO_IND].value , dati_giornalieri[TAMPONE_IND].value);
+
+                    send_pkt(listen_socket , manager_buffer , buf_len , peer[i] , "DATA_ACK");
                 }
+
+
             }
+
+            printf("DATI RACCOLI:\nTAMPONI: %d\nCASI:%d\n" , dati_giornalieri[TAMPONE_IND].value , dati_giornalieri[CASO_IND].value);
         }
 
         //GESTIONE DEL TEMPO

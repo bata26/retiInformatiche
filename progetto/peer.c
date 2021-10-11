@@ -57,6 +57,9 @@ int connected;
 // struttura per mantenere traccia dei vici
 int neighbors[NUM_NEIGHBORS]; 
 
+// gestione del file
+FILE * data_file;
+
 int main(int argc , char** argv){
 
     printf("avvio il client...\n");
@@ -196,7 +199,7 @@ int main(int argc , char** argv){
 
             memset(server_buffer , 0 , MAX_PKT_LEN);
 
-            sender_port = recv_pkt(listen_socket , server_buffer, MAX_PKT_LEN);
+            sender_port = recv_send_pkt(listen_socket , server_buffer, MAX_PKT_LEN);
 
             // ottengo il codice del pacchetto
             sscanf(server_buffer , "%s" , msg_type);
@@ -264,6 +267,16 @@ int main(int argc , char** argv){
                     buf_len = sprintf(manager_buffer , "%s %d %d" , "TDAY_AGG" , peer_data[0].value , peer_data[1].value);
                     send_pkt(listen_socket , manager_buffer , buf_len , manager_port , "MDAY_ACK");
                     printf("Dati inviati\n");
+                }
+
+                else if(strcmp(msg_type , "DAY_DATA") == 0){
+
+                    sscanf(server_buffer , "%s %d %d" , msg_type , &peer_data[CASO_IND].value , &peer_data[TAMPONE_IND].value);
+                    send_ACK(listen_socket ,"DATA_ACK" , sender_port);
+
+                    printf("I dati di tutto il giorno sono:\nTAMPONI:%d\nCASI:%d\nProvo a scrivere su file..\n" , peer_data[TAMPONE_IND].value , peer_data[CASO_IND].value);
+
+                    writeOnFile(peer_data , my_port);
                 }
             }
 

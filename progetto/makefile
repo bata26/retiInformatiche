@@ -6,8 +6,8 @@ all: ./ds ./peer ./manager
 ./ds: ./ds.o ./util/connection.o ./util/util_ds.o
 	gcc -Wall -g ./ds.o ./util/connection.o ./util/util_ds.o -o ./ds
 
-./manager: ./manager.o ./util/connection.o ./util/util_ds.o
-	gcc -Wall -g ./manager.o ./util/connection.o ./util/util_ds.o -o ./manager
+./manager: ./manager.o ./util/connection.o ./util/util_ds.o ./util/data.o
+	gcc -Wall -g ./manager.o ./util/connection.o ./util/util_ds.o ./util/data.o -o ./manager
 
 ./peer.o: ./peer.c ./util/connection.h ./util/costanti.h ./util/data.h
 	gcc -Wall -g -c ./peer.c -o ./peer.o
@@ -15,7 +15,7 @@ all: ./ds ./peer ./manager
 ./ds.o: ./ds.c ./util/connection.h ./util/costanti.h ./util/util_ds.h
 	gcc -Wall -g -c ./ds.c -o ./ds.o
 
-./manager.o: ./manager.c ./util/connection.h ./util/costanti.h ./util/util_ds.h
+./manager.o: ./manager.c ./util/connection.h ./util/costanti.h ./util/util_ds.h ./util/data.h
 	gcc -Wall -g -c ./manager.c -o ./manager.o
 
 ./util/connection.o: ./util/connection.c ./util/connection.h ./util/costanti.h

@@ -91,11 +91,6 @@ void send_pkt(int sd , char* msg , int buf_len , int port_dest , char * expected
             ret = sendto(sd , msg , buf_len , 0 , (struct sockaddr*)&dest_addr , dest_len);
         }while(ret<0);
         
-        printf("Fuori dal do della send\n");
-
-        send = 1;
-        printf("IOn teoria dovrei tornarte ora\n");
-
         //setup interval
         interval.tv_sec = 1;
         interval.tv_usec = 5000;
@@ -152,7 +147,7 @@ void send_ACK(int socket , char * ack_to_send , int dest_port){
 }
 
 
-int recv_pkt(int socket , char * buf , int buf_len){
+int recv_send_pkt(int socket , char * buf , int buf_len){
     int ret;
     struct sockaddr_in sender_addr;
     socklen_t sender_addr_len;
@@ -172,3 +167,39 @@ int recv_pkt(int socket , char * buf , int buf_len){
     return ntohs(sender_addr.sin_port);
 }
 
+
+
+void recv_pkt(int socket , char* buffer , int buf_len , int sender_port , char* expected_header , char * ack_to_send){
+    struct sockaddr_in sender_addr;
+    socklen_t sender_addr_len;
+    int received;
+    fd_set read_fds;
+    char header_buf[HEADER_LEN];
+
+    received = 0;
+
+    while(!received){
+        FD_ZERO(&read_fds);
+        FD_SET(socket , &read_fds);
+
+        select(socket+1 , &read_fds , NULL , NULL , NULL);
+
+        // sicuramente arriva qualcosa dal socket
+        if(FD_ISSET(socket  , &read_fds)){
+            recvfrom(socket , buffer , buf_len , 0 , (struct sockaddr*)&sender_addr , &sender_addr_len);
+
+            sscanf(buffer , "%s" , header_buf);
+
+            if(ntohs(sender_addr.sin_port) == sender_port && strcmp(expected_header , header_buf) == 0){
+                //printf("Ho ricevuto da %d il buffer %s\n" , ntohs(sender_addr.sin_port) , buffer);
+                received = 1;
+            }else{
+                printf("Arrivato un messaggio errato da quello che aspettavo");
+            }
+        }
+    }
+
+    send_ACK(socket , ack_to_send , ntohs(sender_addr.sin_port));
+
+
+} 

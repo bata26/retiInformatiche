@@ -148,7 +148,7 @@ int main(int argc , char** argv){
             int sender_port;
             char request_received[HEADER_LEN];
 
-            sender_port = recv_pkt(listen_socket , request_received , HEADER_LEN);
+            sender_port = recv_send_pkt(listen_socket , request_received , HEADER_LEN);
 
             printf("Ho ricevuto dal client %d --> %s\n" , sender_port , request_received);           
 
