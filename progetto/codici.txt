@@ -10,11 +10,26 @@ MNG_PORT        MNG_ACKP // il DS invia il numero di porta del manager al peerd
 // tra server DS e server manager
 
 MNG_CONN        MNG_ACK // il manager chiede la connessione al DS
-REMV_LST        REMV_ACK // il DS invia al manager la porta di un peer che si è disconnessione
+REMV_LST        REMV_ACK // il DS invia al manager la porta di un peer che si è disconnesso
 UPDT_LST        MUPD_ACK // il DS invia al manager la porta in un peer che is è conneso
+DS_LEAVE        DS_LEACK // il DS ha ricevuto il comando esc e chiede al manager di chiudere i register
 
 
 // tra server manager e peer
 TDAY_CLS        TDAY_ACK // il manager manda al peer il pacchetto di chiusura dei register
 TDAY_AGG        MDAY_ACK // il peer manda al manager i dati aggregati del giorno
 DAY_DATA        DATA_ACK // il manager manda al peer i dati del giorno e il peer manda ack
+
+
+
+/*
+Il manager controlla che arrivino le 6
+quando arrivano le 6: manda la richiesta di chiusura ai peer e chiude i register
+
+quando arirva la esc dal DS:
+il manager manda la richiesta di chiusura, pero' quando arrivano le 18 non deve chiudere i register, se arriva dopo le 18
+e' relativo al giorno dopo quindi il giorno dopo alle 18 non si chiudono
+
+00< x < 18 --> riferito al giorno corrente
+18 < x < 00 --> riferito al giorno successivo
+*/

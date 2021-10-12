@@ -33,7 +33,6 @@ void getNeighbors(int peer_port , int* neighbors , int* peer_list){
     cur_prev_diff = NUM_NEIGHBORS; // differenza di indice corrente tra il peer alla posizione 0 e il peer corrente
     cur_next_diff = NUM_NEIGHBORS; // differenza di indice corrente tra il peer alla posizione 1 e il peer corrente
 
-    printf("Sto analizzando il peer %d per trovare i vicini\n" , peer_port);
 
     // cerco gli indici piu "vicini" al peer
     for(i = 0 ; i < NUM_PEER ; i++){
@@ -41,11 +40,8 @@ void getNeighbors(int peer_port , int* neighbors , int* peer_list){
         // se sono io salto
         if( i == index ) continue;
         
-        printf("Analizzo i-->%d\n" , i);
         // se esiste il peer .. 
         if(peer_list[i] != 0){
-
-            printf("Peer %d diverso da 0" , i);
 
             // primo posto vuoto
             if( cur_prev == -1){
@@ -93,10 +89,7 @@ void getNeighbors(int peer_port , int* neighbors , int* peer_list){
 int checkIfUpdated(int* neighbors , int* new_neighbors){
     int updated = 0;
 
-
-
     if(neighbors[0] != new_neighbors[0]){
-        printf("diversi quindi scambio");
         neighbors[0] = new_neighbors[0];
         updated = 1; 
     }
@@ -116,7 +109,6 @@ void setupNeighbors(int neighbors[][NUM_NEIGHBORS]){
 
     for(i = 0 ; i < NUM_PEER ; i++){
         for(j = 0 ; j < NUM_NEIGHBORS ; j++){
-            printf("i-> %d , j-> %d\n" , i , j);
             neighbors[i][j] = -1;
         }
     }
@@ -128,8 +120,6 @@ void updateNeighbors(int* peer_list , int  neighbors[][NUM_NEIGHBORS] , int * up
     int neighbors_current_peer[NUM_NEIGHBORS];
     // ogni volta che aggiungo un peer controllo se i vicini sono cambiati o no
     for(i = 0 ; i < NUM_PEER ; i++){
-        printf("cerco di aggiornare il peer %d" , peer_list[i]);
-
         if(peer_list[i] == 0) continue;
 
         // aggiorno la struttura
@@ -138,7 +128,6 @@ void updateNeighbors(int* peer_list , int  neighbors[][NUM_NEIGHBORS] , int * up
         // controllo se ho cambiato qualcosa, se ho cambiato qualcosa mando un pacchetto di UPDATE
 
 
-        printf("Sto esaminando il peer %d e i vicini che ho trovato sono : %d , %d\n" , peer_list[i] , neighbors_current_peer[0] , neighbors_current_peer[1]);
         if(checkIfUpdated(neighbors[i] , neighbors_current_peer)){
             updated[i] = 1;
         }

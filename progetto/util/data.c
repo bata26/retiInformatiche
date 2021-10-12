@@ -36,7 +36,10 @@ void writeOnFile(struct datiSalvati usr_data[DATA_LEN] , int port){
     sprintf(filename , "%s%d" , FILE_PATH , port);
     
     file_data = fopen(filename , "a");
-    fprintf(file_data , "%d:%d:%d %d %d" , timeinfo->tm_year+1900 , timeinfo->tm_mon+1 , timeinfo->tm_mday  ,  usr_data[CASO_IND].value , usr_data[TAMPONE_IND].value);
+    fprintf(file_data , "%d:%d:%d %d %d\n" , timeinfo->tm_year+1900 , timeinfo->tm_mon+1 , timeinfo->tm_mday  ,  usr_data[TAMPONE_IND].value , usr_data[CASO_IND].value);
 
     fclose(file_data);
+
+    usr_data[TAMPONE_IND].value = 0;
+    usr_data[CASO_IND].value = 0;
 }

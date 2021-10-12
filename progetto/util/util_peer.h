@@ -1,2 +1,2 @@
 void cleanNeighbors(int * neighbors);
-void stampaComandi();
+void stampaComandi(int port);

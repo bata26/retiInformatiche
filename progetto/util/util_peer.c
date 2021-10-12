@@ -10,8 +10,8 @@ void cleanNeighbors(int * neighbors){
 }
 
 
-void stampaComandi(){
-     printf("*********************** PEER AVVIATO ***********************\n");
+void stampaComandi(int port){
+    printf("*********************** PEER %d AVVIATO ***********************\n" , port);
     printf("Comandi disponibili:\n\n");
     printf("1) start DS_ADDR DS_PORT  -> Connette il peer al DS con indirizzo e porta specificati\n");
     printf("2) add type quantity -> Aggiunge il dato di tipo type \n");

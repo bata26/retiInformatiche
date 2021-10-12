@@ -1,0 +1,1 @@
+void closeRegister(struct datiSalvati manager_data[DATA_LEN] , int* peer , int listen_socket);

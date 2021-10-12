@@ -62,9 +62,6 @@ FILE * data_file;
 
 int main(int argc , char** argv){
 
-    printf("avvio il client...\n");
-
-
     //inizializzo i set
     FD_ZERO(&master);
     FD_ZERO(&read_fds);
@@ -78,7 +75,7 @@ int main(int argc , char** argv){
 
     //my_port = 5001;
     server_port = 4242;
-    printf("La mia porta e' --> %d\n" , my_port);
+    
 
     //creo il socket di ascolto
     listen_socket = create_listener_socket(&listen_addr , &listen_addr_len , my_port);
@@ -88,12 +85,8 @@ int main(int argc , char** argv){
     FD_SET(0 , &master);
     fdmax = listen_socket + 1;
 
-    stampaComandi();
+    stampaComandi(my_port);
     setupData(peer_data);
-
-    //printf("Stampo datiSalvati per debug:\n");
-    //printf("peer_data[0]: type -> %d , value -> %d\n" , peer_data[0].type , peer_data[0].value);
-    //printf("peer_data[1]: type -> %d , value -> %d\n" , peer_data[1].type , peer_data[1].value);
 
     while(1){
 
@@ -107,28 +100,27 @@ int main(int argc , char** argv){
         if(FD_ISSET( 0 , &read_fds)){
 
             char command[MAX_COMMAND_LEN];
-
-            printf("comando arrivato\n");
             
             fgets(stdin_buffer , MAX_STDIN_LEN , stdin);
             sscanf(stdin_buffer, "%s", command);
-            printf("ho ricevuto il comando %s\n" , command);
+            printf("Ricevuto il comando %s\n" , command);
 
             // start
             if(strcmp(command , "start") == 0){
 
                 if(connected){
-                    printf("Already Connected!\n");
+                    printf("Il peer e' gia' connesso\n");
                     continue;
                 }
+
+                printf("Invio al DS la richiesta di connessione\n");
                 
                 send_pkt(listen_socket , "CONN_REQ" , HEADER_LEN , server_port, "CONN_ACK");
                 printf("Ricevuto ACK\n");
 
                 connected = 1;
 
-                
-
+                printf("Connessione riuscita!\n");            
 
                 FD_CLR(0 , &read_fds);
             }
@@ -136,13 +128,13 @@ int main(int argc , char** argv){
             else if(strcmp(command , "stop") == 0){
 
                 if(!connected){
-                    printf("Not connected yet..\n");
+                    printf("Non sono ancora connesso, impossibile disconnettersi\n");
                     continue;
                 }
 
-                printf("Tentativo di disconnessione\n");
+                printf("Invio al DS la richiesta di disconnessione\n");
                 send_pkt(listen_socket , "CONN_STP" , HEADER_LEN , server_port, "STOP_ACK");
-
+                printf("Disconnessione avvenuta con successo!\n");
                 connected = 0;
 
                 FD_CLR(0 , &read_fds);
@@ -159,9 +151,9 @@ int main(int argc , char** argv){
                 int value;
                 char tipo[MAX_COMMAND_LEN];
 
+                printf("Inserisco i nuovi dati..\n");
+
                 sscanf(stdin_buffer , "%s %s %d" , command , tipo , &value);
-                printf("stdin_buffer->%s\n" , stdin_buffer);
-                printf("Ho ricevuto nella add: type -> %s , vlaue -> %d\n" , tipo , value);
 
                 if(strcmp(tipo , "CASO") == 0){
                     type = CASO;
@@ -172,14 +164,11 @@ int main(int argc , char** argv){
                     break;
                 }
 
-                printf("tipoe--> %s quindi type --> %d\n" , tipo , type);
-
                 peer_data[type].value += value;
 
-
-                printf("Resoconto della giornata:\n");
-                printf("Tamponi effettuati: +%d\n"  , peer_data[TAMPONE].value);
-                printf("Nuovi casi registrati: +%d\n"  , peer_data[CASO].value);
+                printf("Dati inseriti, Resoconto della giornata:\n");
+                printf("Tamponi effettuati: %d\n"  , peer_data[TAMPONE].value);
+                printf("Nuovi casi registrati: %d\n"  , peer_data[CASO].value);
                 FD_CLR(0 , &read_fds);
             }
 
@@ -210,32 +199,24 @@ int main(int argc , char** argv){
                 // LISTA DEI NEIGHBOR
                 if(strcmp(msg_type , "NBR_LIST") == 0){
                     
+                    printf("Ricevuta la lista dei neighbors dal DS\n");
                     cleanNeighbors(neighbors);
-                    printf("Dopo la cleanNeighbors --> %d , %d\n" , neighbors[0] , neighbors[1] );
-
-                    printf("Ho ricevuto la richiesta di %s" , msg_type);
-
                     send_ACK(listen_socket , "LIST_ACK" , server_port);
 
                     sscanf(server_buffer , "%s %d %d" , msg_type , &neighbors[0] , &neighbors[1]);
                     printf("I miei vicini sono: \n1) %d \n2) %d\n" , neighbors[0] , neighbors[1]);
-                    
                 }
 
                 // NEIGHBOR UPDATE
                 if(strcmp(msg_type , "NBR_UPDT") == 0){
 
-                    printf("Server_burrer--> %s\n" , server_buffer);
+                    printf("Ricevuta la lista aggiornata dei neighbors dal DS\n");
 
                     cleanNeighbors(neighbors);
-                    printf("Dopo la cleanNeighbors --> %d , %d\n" , neighbors[0] , neighbors[1] );
-
-                    printf("Ho ricevuto la richiesta di %s" , msg_type);
-
                     send_ACK(listen_socket , "UPDT_ACK" , server_port);
 
                     sscanf(server_buffer , "%s %d %d" , msg_type , &neighbors[0] , &neighbors[1]);
-                    printf("I miei vicini sono: \n1) %d \n2) %d\n" , neighbors[0] , neighbors[1]);
+                    printf("I miei nuovi vicini sono: \n1) %d \n2) %d\n" , neighbors[0] , neighbors[1]);
                 }
 
                 // PORTA DEL MANAGER
@@ -245,9 +226,9 @@ int main(int argc , char** argv){
                     send_ACK(listen_socket , "MNG_ACKP" , server_port);
 
                     if(manager_port == 0){
-                        printf("impossibile ottenere la porta del manager\n");
+                        printf("Il DS ha provato ad inviare la porta del manager ma il manager non e' online\n");
                     }else{
-                        printf("Ho ricevuto la porta del server manager ->%d\n" , manager_port);
+                        printf("Ho ricevuto la porta del server manager\n");
 
                     }
                 }
@@ -261,22 +242,28 @@ int main(int argc , char** argv){
                 if(strcmp(msg_type , "TDAY_CLS") == 0){
                     int buf_len;
 
-                    send_ACK(listen_socket , "TDAY_ACK" , manager_port);
                     printf("Ho ricevuto la richiesta di close dal manager\nInvio al manager i dati odierni\n");
 
-                    buf_len = sprintf(manager_buffer , "%s %d %d" , "TDAY_AGG" , peer_data[0].value , peer_data[1].value);
+                    send_ACK(listen_socket , "TDAY_ACK" , manager_port);
+                    buf_len = sprintf(manager_buffer , "%s %d %d" , "TDAY_AGG" , peer_data[TAMPONE_IND].value , peer_data[CASO_IND].value);
                     send_pkt(listen_socket , manager_buffer , buf_len , manager_port , "MDAY_ACK");
+
                     printf("Dati inviati\n");
                 }
 
                 else if(strcmp(msg_type , "DAY_DATA") == 0){
 
-                    sscanf(server_buffer , "%s %d %d" , msg_type , &peer_data[CASO_IND].value , &peer_data[TAMPONE_IND].value);
+                    printf("Il manager mi ha inviato i dati aggregati relativi al giorno corrente\n");
+
+                    sscanf(server_buffer , "%s %d %d" , msg_type , &peer_data[TAMPONE_IND].value , &peer_data[CASO_IND].value);
                     send_ACK(listen_socket ,"DATA_ACK" , sender_port);
 
-                    printf("I dati di tutto il giorno sono:\nTAMPONI:%d\nCASI:%d\nProvo a scrivere su file..\n" , peer_data[TAMPONE_IND].value , peer_data[CASO_IND].value);
+                    printf("I dati del giorno sono:\nTAMPONI:%d\nCASI:%d\nSalvo i dati ricevuti..\n" , peer_data[TAMPONE_IND].value , peer_data[CASO_IND].value);
 
                     writeOnFile(peer_data , my_port);
+
+                    printf("Salvataggio avvenuto con successo\n");
+                    
                 }
             }
 

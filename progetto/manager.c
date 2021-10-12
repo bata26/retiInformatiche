@@ -22,6 +22,9 @@
 // data utils
 #include "./util/data.h"
 
+// manager utils
+//#include "./util/util_manager.h"
+
 // porta che identifica il peer
 int my_port;
 
@@ -33,6 +36,9 @@ socklen_t listen_addr_len;
 //buffer per i comandi da stdin
 char manager_buffer[MAX_STDIN_LEN];
 int buf_len = MAX_STDIN_LEN;
+
+// buffer per i comandi
+char command[MAX_COMMAND_LEN];
 
 //set per gestire socket e stdin
 fd_set master;
@@ -65,6 +71,9 @@ struct datiSalvati dati_giornalieri[DATA_LEN];
 
 int i , j;
 
+
+void closeRegister();
+
 int main(int argc , char** argv){
 
     printf("avvio il manager...\n");
@@ -92,9 +101,13 @@ int main(int argc , char** argv){
     fdmax = listen_socket + 1;
 
 
-    printf("Inoltro al DS il pacchetto MNG_CONN\n");
+    printf("Inoltro al DS la richiesta di connessione\n");
     // il manager come prima cosa cerca di connettersi al DS
     send_pkt(listen_socket, "MNG_CONN" , HEADER_LEN , server_port , "MNG_ACK");
+    printf("Connessione con il DS avvenuta con successo\n");
+
+    //gestione flag
+    server_flag = 0;
 
     
     while(1){
@@ -118,25 +131,26 @@ int main(int argc , char** argv){
 
             sender_port = recv_send_pkt(listen_socket , manager_buffer , MAX_STDIN_LEN);
             sscanf(manager_buffer , "%s" , request_received);
-            printf("Ho ricevuto da %d il buffer %s\n" , sender_port , manager_buffer);
+
 
             // il server manda un nuovo peer da aggiungere alla lista
             if((strcmp(request_received , "UPDT_LST") == 0) && sender_port == server_port){
                 int new_port;
 
+                printf("Ricevuto dal DS il numero di porta di un nuovo peer che si e' connesso\n");
+
                 send_ACK(listen_socket , "MUPD_ACK" , server_port);
 
                 sscanf(manager_buffer , "%s %d" , request_received , &new_port);
-
                 addPeer(new_port , peer);
 
                 printf("Ho aggiunto il peer %d alla lista dei peer\n" , new_port);
-
-                //FD_CLR(listen_socket , &read_fds);
             }
 
             else if(strcmp(request_received , "REMV_LST") == 0 && sender_port == server_port){
-                int port_to_remove , i;
+                int port_to_remove;
+
+                printf("Ricevuto dal DS il nuemro di porta di un peer che si e' disconnesso\n");
 
                 send_ACK(listen_socket , "REMV_ACK" , server_port);
 
@@ -145,64 +159,28 @@ int main(int argc , char** argv){
                 removePeer(port_to_remove , peer);
                 num_peer--;
 
-                printf("Ho rimosso il peer %d alla lista dei peer" , port_to_remove);
-
-                
-
-                printf("STAMPO I PEER:\n");
-
-                for(i = 0 ; i< NUM_PEER ; i++){
-                    printf("%d) %d\n" , i , peer[i]);
-                }
-
-                //FD_CLR(listen_socket , &read_fds);
-
-
+                printf("Rimosso il peer %d alla lista dei peer" , port_to_remove);
             }  
+
+            // il DS chiude
+            else if(strcmp(request_received , "DS_LEAVE") == 0){
+                send_ACK(listen_socket , "DS_LEACK" , server_port);
+                printf("Il DS si sta disconnettendo, chiudo i register..\n");
+                closeRegister();
+                printf("Register chiusi\n");
+            }
 
         }
 
         // stdin
         else if(FD_ISSET( 0 , &read_fds)){
-            char command[MAX_COMMAND_LEN];
-            //pid_t son_proc[NUM_PEER];
-            int casi , tamponi;
-
             memset(manager_buffer ,  0 , MAX_STDIN_LEN);
 
             fgets(manager_buffer , MAX_STDIN_LEN , stdin);
             sscanf(manager_buffer , "%s" , command);
 
             if(strcmp(command , "close") == 0){
-                for(i = 0 ; i <  NUM_PEER ; i++){
-                    if(peer[i] == 0) continue;
-
-
-                    send_pkt(listen_socket , "TDAY_CLS" , HEADER_LEN , peer[i] , "TDAY_ACK");
-                    recv_pkt(listen_socket , manager_buffer , buf_len , peer[i] , "TDAY_AGG" , "MDAY_ACK");
-
-                    sscanf(manager_buffer , "%s %d %d" , command , &casi , &tamponi);
-                   
-                    printf("Buffer ricevuto: %s\n" , manager_buffer);
-                    dati_giornalieri[0].value += tamponi;
-                    dati_giornalieri[1].value += casi;
-
-
-                }
-
-                // ho aggregato tutti i dati, li rinvio ai peer
-
-                for(i = 0 ; i <  NUM_PEER ; i++){
-                    if(peer[i] == 0) continue;
-
-                    memset(manager_buffer ,  0 , MAX_STDIN_LEN);
-
-                    buf_len = sprintf(manager_buffer , "%s %d %d" , "DAY_DATA" , dati_giornalieri[CASO_IND].value , dati_giornalieri[TAMPONE_IND].value);
-
-                    send_pkt(listen_socket , manager_buffer , buf_len , peer[i] , "DATA_ACK");
-                }
-
-
+                closeRegister();
             }
 
             printf("DATI RACCOLI:\nTAMPONI: %d\nCASI:%d\n" , dati_giornalieri[TAMPONE_IND].value , dati_giornalieri[CASO_IND].value);
@@ -210,20 +188,26 @@ int main(int argc , char** argv){
 
         //GESTIONE DEL TEMPO
 
-        /*
+        
         time(&t);
         timeinfo = localtime(&t);
 
-        printf("Current time --> %s\n" , ctime(&t));
-        printf("Time -> %d\n" , timeinfo->tm_mon);
+        //printf("Current time --> %s\n" , ctime(&t));
+        //printf("Time -> %d\n" , timeinfo->tm_mon);
 
         current_day = timeinfo->tm_mday;
         current_min = timeinfo->tm_min;
         current_hour = timeinfo->tm_hour;
 
-        printf("Current_day -> %d \nCurrent_hour->%d\nCurrent_min->%d\n" , current_day , current_hour , current_min);
+        //printf("Current_day -> %d \nCurrent_hour->%d\nCurrent_min->%d\n" , current_day , current_hour , current_min);
 
-        */
+        if(current_hour == 17 && current_min > 56){
+            printf("Avvio chiusura dei register..\n");
+            closeRegister();
+            printf("Chiusura terminata, dati salvati\n");
+        }
+
+        
 
 
 
@@ -233,10 +217,46 @@ int main(int argc , char** argv){
 }
 
 
-/*
-    Struttura dei comandi
 
-    start DS_addr DS_port
-    add type quantity
-    get aggr(TOT , DIFF) type(TAMPO , NEW) period
-*/
+
+void closeRegister(){
+    int i , tamponi , casi;
+
+    for(i = 0 ; i <  NUM_PEER ; i++){
+        if(peer[i] == 0) continue;
+
+        memset(manager_buffer , 0 , MAX_STDIN_LEN);
+
+        printf("Invio al peer %d la richiesta di chiusura del register\n" , peer[i]);
+
+        send_pkt(listen_socket , "TDAY_CLS" , HEADER_LEN , peer[i] , "TDAY_ACK");
+        recv_pkt(listen_socket , manager_buffer , buf_len , peer[i] , "TDAY_AGG" , "MDAY_ACK");
+
+        printf("Ricevuti i dati giornalieri del peer %d" ,peer[i]);
+
+        sscanf(manager_buffer , "%s %d %d" , command , &tamponi , &casi);
+        
+        dati_giornalieri[TAMPONE_IND].value += tamponi;
+        dati_giornalieri[CASO_IND].value += casi;
+    }
+
+    printf("Aggregato tutti i dati ricevuti\nPreparo invio ai peer\n");
+
+    // ho aggregato tutti i dati, li rinvio ai peer
+
+    for(i = 0 ; i <  NUM_PEER ; i++){
+        if(peer[i] == 0) continue;
+
+        memset(manager_buffer ,  0 , MAX_STDIN_LEN);
+
+        buf_len = sprintf(manager_buffer , "%s %d %d" , "DAY_DATA" , dati_giornalieri[TAMPONE_IND].value , dati_giornalieri[CASO_IND].value);
+        printf("Invio al peer %d i dati aggregati del giorno\n" , peer[i]);
+        send_pkt(listen_socket , manager_buffer , buf_len , peer[i] , "DATA_ACK");
+        printf("Dati inviati\n");
+    }
+
+    printf("Aggiorno strutture dati per il nuovo giorno\n");
+
+    dati_giornalieri[TAMPONE_IND].value = 0;
+    dati_giornalieri[CASO_IND].value = 0;
+}

@@ -52,7 +52,7 @@ int buf_len;
 
 int main(int argc , char** argv){
 
-    printf("avvio il server...\n");
+    //printf("avvio il server...\n");
     stampaComandi();
 
 
@@ -78,18 +78,18 @@ int main(int argc , char** argv){
     setupNeighbors(neighbors);
 
     printf("\n\n");
-    for ( i = 0; i < NUM_PEER; i++)
-    {
-        
-        printf("STO ESAMINANDO IL PEER %d\n" , peer[i]);
+    //for ( i = 0; i < NUM_PEER; i++)
+    //{
+    //    
+    //    printf("STO ESAMINANDO IL PEER %d\n" , peer[i]);
+//
+    //    for(j = 0 ; j < NUM_NEIGHBORS ; j++){
+    //        printf("vicino %d ---> %d\n" , j , neighbors[i][j]);
+    //    }
+    //    printf("\n");
+    //}
 
-        for(j = 0 ; j < NUM_NEIGHBORS ; j++){
-            printf("vicino %d ---> %d\n" , j , neighbors[i][j]);
-        }
-        printf("\n");
-    }
-
-    printf("Mi metto in attesa\n");
+    //printf("Mi metto in attesa\n");
     while(1){
 
         // la select sposta da read_fds, in questo modo il set master
@@ -115,9 +115,9 @@ int main(int argc , char** argv){
             }
 
             else if(strcmp(command , "showpeers") == 0){
-                printf("Prima della stampa\n");
+                //printf("Prima della stampa\n");
                 stampaPeer(peer);
-                printf("dopo la stampa\n");
+                //printf("dopo la stampa\n");
 
                 FD_CLR(0 , &read_fds);
             }
@@ -131,6 +131,9 @@ int main(int argc , char** argv){
             }
 
             else if(strcmp(command , "esc") == 0){
+                printf("Avvio procedura di disconnessione\n");
+                send_pkt(listen_socket , "DS_LEAVE" , HEADER_LEN , manager_port , "DS_LEACK");
+                printf("Disconnessione avvenuta con susccesso!\n");
                 FD_CLR(0 , &read_fds);
             }
 
@@ -150,15 +153,15 @@ int main(int argc , char** argv){
 
             sender_port = recv_send_pkt(listen_socket , request_received , HEADER_LEN);
 
-            printf("Ho ricevuto dal client %d --> %s\n" , sender_port , request_received);           
+            //printf("Ho ricevuto dal client %d --> %s\n" , sender_port , request_received);           
 
             // richiesta di connessione
             if(strcmp(request_received , "CONN_REQ") == 0){
 
-                //int neighbors_current_peer[NUM_NEIGHBORS]; 
-                
-                int i ,index , j;
+                int i ,index;
                 int updated[NUM_PEER]; // contiene informazioni su quali peer vanno aggiornati
+
+                printf("Ho ricevuto una richiesta di connessione dal peer %d\n" , sender_port);
 
                 num_peer++;
                 index = getPeerIndex(sender_port);
@@ -168,7 +171,7 @@ int main(int argc , char** argv){
 
                 // se tutto va bene
                 send_ACK(listen_socket , "CONN_ACK" , sender_port);
-                printf("ACK inviato\n");
+                printf("Connessione riuscita con successo\n");
 
 
                 for( i = 0 ; i< NUM_PEER ; i++){
@@ -181,53 +184,33 @@ int main(int argc , char** argv){
 
                 updateNeighbors(peer , neighbors , updated);
 
-                for( i = 0 ; i< NUM_PEER ; i++){
-                    printf("DOPO: i->%d , updated[i]->%d\n" , i , updated[i]);
-                }
+                //for( i = 0 ; i< NUM_PEER ; i++){
+                //    printf("DOPO: i->%d , updated[i]->%d\n" , i , updated[i]);
+                //}
 
 
                 for(i = 0 ; i <  NUM_PEER ; i++){
                     if(updated[i] == 0) continue;
 
-                    printf("PRIMA: buffer--> %s , buf_len --> %d\n" , buffer , buf_len);
-
                     if(i == index){ // il peer che si e' appena connesso dovra' ricevere un pacchetto di LIST non di update
                         setupNeighborsBuffer(buffer , &buf_len , "NBR_LIST" , neighbors , i); 
-                        send_pkt(listen_socket , buffer , buf_len , peer[i] , "LIST_ACK");  
+                        send_pkt(listen_socket , buffer , buf_len , peer[i] , "LIST_ACK"); 
+
+                        printf("Invio la lista dei neighbors al peer %d" , peer[i]);
                     }else{
                         setupNeighborsBuffer(buffer , &buf_len , "NBR_UPDT" , neighbors , i);   
                         send_pkt(listen_socket , buffer , buf_len , peer[i] , "UPDT_ACK");
+
+                        printf("Invio al peer %d la nuova lista dei neighbors\n" , peer[i]);
                     }
-
-                    printf("DOPO: buffer--> %s , buf_len --> %d\n" , buffer , buf_len);
-
-                    
-
 
                 }
 
-                // STAMPO TUTTI I NEIGHBORS
-                printf("\n\n");
-                for ( i = 0; i < NUM_PEER; i++)
-                {
-                   
-                    printf("STO ESAMINANDO IL PEER %d\n" , peer[i]);
-
-                    for(j = 0 ; j < NUM_NEIGHBORS ; j++){
-                        printf("vicino %d ---> %d\n" , j , neighbors[i][j]);
-                    }
-                    printf("\n");
-                }
-                
-                printf("Sto per inviare al peer il buffer:\n%s\n" , buffer);
 
                 // invio al peer la porta del manager
-
                 buf_len = sprintf(buffer , "%s %d" , "MNG_PORT" , manager_port);
                 send_pkt(listen_socket , buffer , buf_len , sender_port , "MNG_ACKP");
-
                 printf("inviato al peer %d la porta del manager\n" , sender_port);
-
 
 
                 // invio il nuovo peer al manager
@@ -268,7 +251,7 @@ int main(int argc , char** argv){
                     setupNeighborsBuffer(buffer , &buf_len , "NBR_UPDT" , neighbors , i);   
                     send_pkt(listen_socket , buffer , buf_len , peer[i] , "UPDT_ACK");
 
-
+                    printf("Invio la nuova lista dei neighbors al peer %d" , peer[i]);
                 }
 
                 // MANAGER
@@ -277,7 +260,6 @@ int main(int argc , char** argv){
                 send_pkt(listen_socket , buffer , buf_len , manager_port , "REMV_ACK");
                 printf("Ho inviato al manager il peer da rimuovere\n");
 
-                //////
 
                 FD_CLR(listen_socket , &read_fds);
 
@@ -285,10 +267,14 @@ int main(int argc , char** argv){
 
             // richiesta di connessione del manager
             else if(strcmp(request_received , "MNG_CONN") == 0){
+                printf("Ricevuta la richiesta di connessione del manager!\n");
+
                 manager_port = sender_port;
                 send_ACK(listen_socket , "MNG_ACK" , manager_port);
 
-                printf("Ricevuta la richiesta di connessione del manager!\n");
+                printf("Connessione con il manager avvenuta con successo!\n");
+
+                
                 manager_connected = 1;
             }    
 
