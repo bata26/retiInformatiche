@@ -126,6 +126,7 @@ int main(int argc , char** argv){
             }
             // stop
             else if(strcmp(command , "stop") == 0){
+                int buf_len;
 
                 if(!connected){
                     printf("Non sono ancora connesso, impossibile disconnettersi\n");
@@ -136,6 +137,12 @@ int main(int argc , char** argv){
                 send_pkt(listen_socket , "CONN_STP" , HEADER_LEN , server_port, "STOP_ACK");
                 printf("Disconnessione avvenuta con successo!\n");
                 connected = 0;
+
+                printf("Invio al manager i dati raccolti fino ad ora\n");
+                buf_len = sprintf(manager_buffer , "%s %d %d" , "TDAY_AGG" , peer_data[TAMPONE_IND].value , peer_data[CASO_IND].value);
+                send_pkt(listen_socket , manager_buffer , buf_len , manager_port , "MDAY_ACK");
+                printf("Dati inviati.\n");
+
 
                 FD_CLR(0 , &read_fds);
 
@@ -170,6 +177,49 @@ int main(int argc , char** argv){
                 printf("Tamponi effettuati: %d\n"  , peer_data[TAMPONE].value);
                 printf("Nuovi casi registrati: %d\n"  , peer_data[CASO].value);
                 FD_CLR(0 , &read_fds);
+            }
+
+            // get
+            else if(strcmp(command , "get") == 0){
+                char tipo_aggr[AGGR_LEN];
+                char tipo[MAX_COMMAND_LEN];
+                char data_iniziale[DATE_LEN];
+                char data_finale[DATE_LEN];
+                int ret;
+
+                printf("\nValore di stdin_buffer->%s\n\n" , stdin_buffer);
+                printf("Data iniziale-> %s\n"  , data_iniziale);
+
+                ret = sscanf(stdin_buffer , "%s %s %s %s %s" , command , tipo_aggr , tipo , data_iniziale , data_finale);
+
+                printf("\nAppena inseriti:\nTipo_aggr->%s\nTipo->%s\nDataIniziale->%s\nDataFinale->%s\n" , tipo_aggr , tipo , data_iniziale , data_finale);
+
+                /*
+                    CASI:
+                    - 2 date distinte
+                    - nessuna data
+                    - una delle due *
+
+                    CONTROLLI
+                    - date distinte-> prima data inserita < seconda data
+                    - controlli su numero mese anno giorno etc
+                    - La variazione ha bisogno di due date distinte, mentre totale no
+                */
+
+                printf("Valore di ret dopo la scanf-> %d\n" , ret);
+                // numero errato di parametri
+                if(ret != 3 || ret != 5){
+                    printf("I parametri inseriti non sono validi, riprovare..\n");
+                    continue;
+                }
+
+                ret = checkDates(data_iniziale , data_finale , tipo_aggr);
+
+                if(ret){
+                    printf("Date valide!!\n");
+                }
+
+
             }
 
             memset(stdin_buffer , 0 , MAX_STDIN_LEN);

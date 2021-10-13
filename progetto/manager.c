@@ -148,7 +148,7 @@ int main(int argc , char** argv){
             }
 
             else if(strcmp(request_received , "REMV_LST") == 0 && sender_port == server_port){
-                int port_to_remove;
+                int port_to_remove , tamponi , casi;
 
                 printf("Ricevuto dal DS il nuemro di porta di un peer che si e' disconnesso\n");
 
@@ -160,6 +160,22 @@ int main(int argc , char** argv){
                 num_peer--;
 
                 printf("Rimosso il peer %d alla lista dei peer" , port_to_remove);
+
+                memset(manager_buffer , 0 , MAX_STDIN_LEN );
+
+                printf("Aspetto dal peer %d i dati del giorno..\n" , port_to_remove);
+
+                recv_pkt(listen_socket , manager_buffer , buf_len , port_to_remove , "TDAY_AGG" , "MDAY_ACK");
+
+                printf("Ricevuti i dati giornalieri del peer %d" ,port_to_remove);
+
+                sscanf(manager_buffer , "%s %d %d" , command , &tamponi , &casi);
+
+                dati_giornalieri[TAMPONE_IND].value += tamponi;
+                dati_giornalieri[CASO_IND].value += casi;
+                printf("Dati aggiunti:\nTamponi:%d\nCasi:%d\n" , dati_giornalieri[TAMPONE_IND].value , dati_giornalieri[CASO_IND].value);
+
+
             }  
 
             // il DS chiude

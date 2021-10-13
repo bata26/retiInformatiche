@@ -41,3 +41,8 @@
 #define FILE_PATH "./myfile/"
 // lunghezza nome del file
 #define FILE_LEN 50
+
+// lunghezza buffer per VARIAZIONE/TOTALE
+#define AGGR_LEN 10
+// lunghezza stringa contenente la data
+#define DATE_LEN 10

@@ -86,7 +86,7 @@ void send_pkt(int sd , char* msg , int buf_len , int port_dest , char * expected
     // finchè non ho inviato e ricevuto l'ack
     while(!send){        
         do{
-            printf("provo ad inviare %s al server\n" , msg);
+            printf("provo ad inviare %s a %d\n" , msg , port_dest);
             ret = sendto(sd , msg , buf_len , 0 , (struct sockaddr*)&dest_addr , dest_len);
         }while(ret<0);
 
@@ -163,7 +163,7 @@ int recv_send_pkt(int socket , char * buf , int buf_len){
         perror("Errore nella recv from -> ");
     }
 
-    printf("recv_send_pkt %s da %d\n" , buf , ntohs(sender_addr.sin_port));
+    printf("Ricevuto pacchetto %s da %d\n" , buf , ntohs(sender_addr.sin_port));
 
     return ntohs(sender_addr.sin_port);
 }
