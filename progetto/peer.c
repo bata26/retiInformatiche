@@ -222,8 +222,16 @@ int main(int argc , char** argv){
                     printf("Date non valide\n");
                 }
 
+                if(strcmp(data_iniziale , "*") == 0){
+                    sprintf(data_iniziale , "%d:%d:%d" , START_DAY , START_MONTH , START_YEAR);
+                }
+
+                if(strcmp(data_finale , "*") == 0){
+                    getFinalDate(data_finale);
+                }
+
                 if(strcmp(tipo_aggr , "TOTALE") == 0){
-                    calculateTotal(data_iniziale , data_finale , my_port);
+                    calculateTotal(data_iniziale , data_finale  , tipo);
                 }
 
 

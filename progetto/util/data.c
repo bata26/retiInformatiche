@@ -33,7 +33,7 @@ void writeOnFile(struct datiSalvati usr_data[DATA_LEN] , int port){
 
     //printf("Info:\nanno:%d\nmese:%d\ngiorno:%d\n" ,timeinfo->tm_year+1900 , timeinfo->tm_mon+1 , timeinfo->tm_mday );
     
-    sprintf(filename , "%s%d" , FILE_PATH , port);
+    sprintf(filename , "%s%d%s" , FILE_PATH , port , ".txt");
     
     file_data = fopen(filename , "a");
 

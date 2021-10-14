@@ -1,7 +1,24 @@
-#include "costanti.h"
-#include <stdio.h>
+#include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/time.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <time.h>
 
+
+#include "connection.h"
+#include "costanti.h"
+
+
+
+extern int my_port;
+extern int neighbors[NUM_NEIGHBORS];
+extern int manager_port;
+extern int listen_socket;
 void cleanNeighbors(int * neighbors){
     int i;
 
@@ -18,6 +35,13 @@ void stampaComandi(int port){
     printf("2) add type quantity -> Aggiunge il dato di tipo type \n");
     printf("3) get aggr type period -> Mostra Un resoconto aggregato aggr del dato type nel periodo period specificato \n");
     printf("4) stop -> Chiude la connessione con il DS\n");
+
+    printf("Stampo roba per debvug extern:\n");
+    printf("my_port:%d\n" , my_port);
+    printf("neighbors[0]:%d\n" , neighbors[0]);
+    printf("neighbors[1]:%d\n" , neighbors[1]);
+    printf("manager_port:%d\n" , manager_port);
+    printf("listen_socket:%d\n", listen_socket);
 }
 
 // bisestile se divisibile per 4 quando non e' secolare o divisibile per 400 quando secolare
@@ -32,6 +56,8 @@ int isLeapYear(int year){
 int checkSingleDate(char date[DATE_LEN]){
     int result;
     int num_date[3];
+    time_t t;
+    struct tm* timeinfo;
 
     result = 0;
 
@@ -82,6 +108,11 @@ int checkSingleDate(char date[DATE_LEN]){
         printf("Si e' inserito il 29 febbraio di un anno non bisestile");
         return result;
     }
+
+    // controllo che non ha inserito un giorno di un register non ancora chiuso
+
+    time(&t);
+    timeinfo = localtime(&t);
 
     result = 1;
     return result;
@@ -138,8 +169,9 @@ FILE * findFirstDate(char data_iniziale[DATE_LEN] , int my_port){
     char filename[DATA_LEN];
     char temp_data[DATE_LEN];
     
+    
 
-    sprintf(filename , "%s%d" , FILE_PATH , my_port);
+    sprintf(filename , "%s%d%s" , FILE_PATH , my_port , ".txt");
 
     file_data = fopen(filename , "r");
     
@@ -159,7 +191,7 @@ FILE * findFirstDate(char data_iniziale[DATE_LEN] , int my_port){
         temp_data_file = file_data;
         //printf("nel while");
         fscanf(file_data , "%s" , temp_data);
-        printf("Analizzo la data %s\n" , temp_data);
+        //printf("Analizzo la data %s\n" , temp_data);
 
         if(strcmp(temp_data , data_iniziale) == 0) return temp_data_file;
         
@@ -171,10 +203,14 @@ FILE * findFirstDate(char data_iniziale[DATE_LEN] , int my_port){
 
 }
 
-void calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN] , int my_port){
+void calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN] ,  char * tipo){
     FILE * file_data;
     int tamponi , casi;
     char temp_data[DATE_LEN];
+    int tot , found , first;
+    char line_buffer[50];
+
+    memset(line_buffer , 0 , 50);
 
     file_data = findFirstDate(data_iniziale , my_port);
     
@@ -183,9 +219,89 @@ void calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN] , 
         return;
     }
 
-    printf("file_data valid\n");
-    fscanf(file_data , "%d" , &tamponi);
-    fscanf(file_data , "%d" , &casi);
-    printf("Dati Letti:\nTamponi:%d\nCasi:%d\n"  , tamponi ,casi);
+    found = 0;
+    tot = 0;
+
+    first = 1;
+
+    while(fgets(line_buffer , 50 , file_data) && !(found)){
+        printf("%s\n" , line_buffer);
+
+        // se e' il primo non ho la data nel puntatore del file
+        if(first){
+            sscanf(line_buffer , "%d %d" , &tamponi , &casi);
+            first = 0;
+        }else{
+            sscanf(line_buffer , "%s %d %d" , temp_data , &tamponi , &casi);
+            printf("temp_data--> %s\n" , temp_data);
+        }
+
+        if(strcmp(tipo , "TAMPONE") == 0){
+            tot += tamponi;
+            printf("TAMPONI == %d\n" , tamponi);
+        }else{
+            tot += casi;
+            printf("CASI == %d\n" , casi);
+        }
+
+        printf("tot == %d\n" , tot);
+
+    }
+
+    printf("TOTALE %s --> %d\n" , tipo , tot);
+}
+
+
+/**
+ * La data di partenza e' specificata in costanti.h
+ * L'ultima data e' salvata dal manager
+ * Struttura dell'elaborazione aggregato:
+ * 
+ * 1) Scorro il file dall'inizio, se e' * la data iniziale o finche' non la trovo
+ * 2) confronto le date per capire se sono successive, devo avere dati di tutti i giorni
+ * 3) se non trovo la data, mando una request ai peer
+ * 
+ * 
+ * 
+ * 
+ * 
+ */
+// ritorna la data finale, questa coincide con il giorno corrente se sono passate le 18,
+// con il giorno precedente se non sono passate
+void getFinalDate(char*date){
+    time_t t;
+    struct tm* timeinfo;
+    int day , year , month;
+
+    time(&t);
+    timeinfo = localtime(&t);
+
+    // giorno precedente
+    if(timeinfo->tm_hour < 18){
+
+        // primo dell'anno
+        if(timeinfo->tm_mday == 1){
+            if(timeinfo->tm_mon == 0){
+                day = 31;
+                month = 12;
+                year = timeinfo->tm_year - 1 + 1900;
+            }
+            else if(timeinfo->tm_mon == 1 || timeinfo->tm_mon == 3 || timeinfo->tm_mon == 5 || timeinfo->tm_mon == 8 || timeinfo->tm_mon == 10){
+                day = 31;
+            }
+            else if(timeinfo->tm_mon == 2){
+                day = 28 + isLeapYear(timeinfo->tm_year+1900);
+            }
+            else{
+                day = 30;
+            }
+            
+        }
+        //ptimo giorno di un mese
+        sprintf(date , "%d:%d:%d" , day , month , year);
+    }else{
+        sprintf(date , "%d:%d:%d" , timeinfo->tm_mday , timeinfo->tm_mon + 1 , timeinfo->tm_year + 1900);
+    }
+
 
 }

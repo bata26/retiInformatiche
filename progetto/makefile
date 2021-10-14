@@ -31,7 +31,7 @@ all: ./ds ./peer ./manager
 ./util/util_ds.o: ./util/util_ds.c ./util/util_ds.h ./util/costanti.h
 	gcc -Wall -g -c ./util/util_ds.c -o ./util/util_ds.o
 
-./util/util_peer.o: ./util/util_peer.c ./util/util_peer.h ./util/costanti.h ./util/data.h
+./util/util_peer.o: ./util/util_peer.c ./util/util_peer.h ./util/costanti.h ./util/data.h ./util/connection.h
 	gcc -Wall -g -c ./util/util_peer.c -o ./util/util_peer.o
 
 ./util/data.o: ./util/data.c ./util/data.h ./util/costanti.h 
