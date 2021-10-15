@@ -16,3 +16,14 @@ get VARIAZIONE TAMPONE * *
 get TOTALE TAMPONE 10:10:2021 *
 
 
+
+
+
+
+
+
+
+// TEST per aggregati su file 5001.txt
+get TOTALE TAMPONE 7:10:2021 *
+
+

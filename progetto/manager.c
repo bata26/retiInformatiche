@@ -143,7 +143,7 @@ int main(int argc , char** argv){
 
                 sscanf(manager_buffer , "%s %d" , request_received , &new_port);
                 addPeer(new_port , peer);
-
+                num_peer++;
                 printf("Ho aggiunto il peer %d alla lista dei peer\n" , new_port);
             }
 
@@ -184,6 +184,18 @@ int main(int argc , char** argv){
                 printf("Il DS si sta disconnettendo, chiudo i register..\n");
                 closeRegister();
                 printf("Register chiusi\n");
+            }
+            // il peer richiede il numero di peer attualmente connessi
+            else if(strcmp(request_received , "TOT_PEER") == 0){
+
+                send_ACK(listen_socket , "PEER_ACK" , sender_port);
+                printf("Il peer %d richiede il numero di peer connessi\n" , sender_port);
+                
+                // preparo il buffer
+                buf_len = sprintf(manager_buffer , "%s %d" , "PEER_LST" , num_peer);
+                send_pkt(listen_socket , manager_buffer , buf_len , sender_port , "PLST_ACK");
+                printf("numero di peer inviato e ricevuto ACK\n");
+
             }
 
         }

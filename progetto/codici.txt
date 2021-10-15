@@ -19,8 +19,11 @@ DS_LEAVE        DS_LEACK // il DS ha ricevuto il comando esc e chiede al manager
 TDAY_CLS        TDAY_ACK // il manager manda al peer il pacchetto di chiusura dei register
 TDAY_AGG        MDAY_ACK // il peer manda al manager i dati aggregati del giorno
 DAY_DATA        DATA_ACK // il manager manda al peer i dati del giorno e il peer manda ack
+TOT_PEER        PEER_ACK // il peer chiede al manager quanti altri peer sono attualmente connessi
+PEER_LST        PLST_ACK // il manager manda il pacchetto contenente il numero di peer attualmente connessi
 
-
+// tra peer e peer
+REQ_ENTR        ENTR_ACK // il peer richiede dati ai suoi vicini
 
 /*
 Il manager controlla che arrivino le 6

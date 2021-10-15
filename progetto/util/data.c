@@ -22,7 +22,7 @@ void setupData( struct datiSalvati usr_data[DATA_LEN]){
     usr_data[1].value = 0;
 }
 
-void writeOnFile(struct datiSalvati usr_data[DATA_LEN] , int port){
+void writeOnFile(struct datiSalvati usr_data[DATA_LEN] , int port , char def){
     FILE * file_data;
     char filename[DATA_LEN];
     time_t t;
@@ -42,7 +42,8 @@ void writeOnFile(struct datiSalvati usr_data[DATA_LEN] , int port){
         return;
     }
     
-    fprintf(file_data , "%d:%d:%d %d %d\n" , timeinfo->tm_year+1900 , timeinfo->tm_mon+1 , timeinfo->tm_mday  ,  usr_data[TAMPONE_IND].value , usr_data[CASO_IND].value);
+    
+    fprintf(file_data , "%d:%d:%d %d %d %c\n" , timeinfo->tm_year+1900 , timeinfo->tm_mon+1 , timeinfo->tm_mday  ,  usr_data[TAMPONE_IND].value , usr_data[CASO_IND].value , def);
 
     fclose(file_data);
 

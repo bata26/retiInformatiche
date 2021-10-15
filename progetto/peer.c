@@ -41,6 +41,8 @@ char stdin_buffer[MAX_STDIN_LEN];
 char server_buffer[MAX_PKT_LEN];
 // buffer per i comandi da manager
 char manager_buffer[MAX_STDIN_LEN];
+// buffer per altri peer
+char peer_buffer[MAX_STDIN_LEN];
 
 //set per gestire socket e stdin
 fd_set master;
@@ -143,6 +145,8 @@ int main(int argc , char** argv){
                 send_pkt(listen_socket , manager_buffer , buf_len , manager_port , "MDAY_ACK");
                 printf("Dati inviati.\n");
 
+                writeOnFile(peer_data , my_port , 'N');
+
 
                 FD_CLR(0 , &read_fds);
 
@@ -187,8 +191,8 @@ int main(int argc , char** argv){
                 char data_finale[DATE_LEN];
                 int ret;
 
-                printf("\nValore di stdin_buffer->%s\n\n" , stdin_buffer);
-                printf("Data iniziale-> %s\n"  , data_iniziale);
+                //printf("\nValore di stdin_buffer->%s\n\n" , stdin_buffer);
+                //printf("Data iniziale-> %s\n"  , data_iniziale);
 
                 ret = sscanf(stdin_buffer , "%s %s %s %s %s" , command , tipo_aggr , tipo , data_iniziale , data_finale);
 
@@ -217,21 +221,28 @@ int main(int argc , char** argv){
                 printf("Dopo la checkdate()\nret--> %d\n" , ret);
 
                 if(ret){
-                    printf("Date valide!!\n");
+                    printf("Date valide!!\n\n");
                 }else{
                     printf("Date non valide\n");
                 }
+
+                //printf("Dopo la checkDates:\nDataIniziale:%s\nDataFinale:%s\n" ,  data_iniziale , data_finale);
+
 
                 if(strcmp(data_iniziale , "*") == 0){
                     sprintf(data_iniziale , "%d:%d:%d" , START_DAY , START_MONTH , START_YEAR);
                 }
 
                 if(strcmp(data_finale , "*") == 0){
+                    //printf("\n\nPrima della final date:\nDataIniziale:%s\nDataFinale:%s\n\n" ,  data_iniziale , data_finale);
                     getFinalDate(data_finale);
+                    //printf("\n\nDOPO della final date:\nDataIniziale:%s\nDataFinale:%s\n\n" ,  data_iniziale , data_finale);
                 }
 
+                printf("Prima della calculate total:\nDataIniziale:%s\nDataFinale:%s\n" ,  data_iniziale , data_finale);
+
                 if(strcmp(tipo_aggr , "TOTALE") == 0){
-                    calculateTotal(data_iniziale , data_finale  , tipo);
+                    calculateTotal(data_iniziale , data_finale );
                 }
 
 
@@ -325,10 +336,34 @@ int main(int argc , char** argv){
 
                     printf("I dati del giorno sono:\nTAMPONI:%d\nCASI:%d\nSalvo i dati ricevuti..\n" , peer_data[TAMPONE_IND].value , peer_data[CASO_IND].value);
 
-                    writeOnFile(peer_data , my_port);
+                    writeOnFile(peer_data , my_port , 'F');
 
                     printf("Salvataggio avvenuto con successo\n");
                     
+                }
+            }
+
+            //peer
+            else{
+                memset(peer_buffer , 0 , MAX_STDIN_LEN);
+
+                if(strcmp(msg_type , "REQ_ENTRY")){
+                    /**
+                     * devo:
+                     *  -inviare i dati che ho relativi alla data richiesta, se ho la F nella data, evito di fare il flooding
+                     *  -se non ho la F inoltro il pacchetto di flooding ai miei vicini, eccetto al sender
+                     */
+
+                    int tamponi, casi;
+                    char def;
+                    char date[DATE_LEN];
+
+                    send_ACK(listen_socket , "ENTR_ACK" , sender_port);
+
+                    sscanf(server_buffer , "%s %d %s" , msg_type ,&sender_port , date);
+                    readFromFile(date , &tamponi , &casi , &def);
+
+                    printf("Ho letto dal file:\nCASI:%d\nTAMPONI:%d\nDEF:%c\n" , tamponi , casi , def);
                 }
             }
 
