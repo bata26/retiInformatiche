@@ -43,7 +43,7 @@ void writeOnFile(struct datiSalvati usr_data[DATA_LEN] , int port , char def){
     }
     
     
-    fprintf(file_data , "%d:%d:%d %d %d %c\n" , timeinfo->tm_year+1900 , timeinfo->tm_mon+1 , timeinfo->tm_mday  ,  usr_data[TAMPONE_IND].value , usr_data[CASO_IND].value , def);
+    fprintf(file_data , "%d:%d:%d %d %d %c\n" ,  timeinfo->tm_mday  , timeinfo->tm_mon+1 , timeinfo->tm_year+1900 ,  usr_data[TAMPONE_IND].value , usr_data[CASO_IND].value , def);
 
     fclose(file_data);
 

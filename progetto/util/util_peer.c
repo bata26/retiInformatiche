@@ -63,7 +63,7 @@ void stampaComandi(int port){
 
 */
 void askToPeer(char date[DATE_LEN]){
-    int peer_connected , i;
+    int peer_connected , i , request_id;
 
     printf("Chiedo ai miei vicini informazioni sulla data: %s\n" , date );
 
@@ -75,13 +75,13 @@ void askToPeer(char date[DATE_LEN]){
     send_pkt(listen_socket , "TOT_PEER" , HEADER_LEN , manager_port , "PEER_ACK");
     recv_pkt(listen_socket , buffer , MAX_STDIN_LEN , manager_port , "PEER_LST" , "PLST_ACK");
 
-    sscanf(buffer , "%s %d" , header , &peer_connected);
+    sscanf(buffer , "%s %d %d" , header , &peer_connected , &request_id);
     peer_connected--;
 
     printf("Ci sono %d peer attualmente connessi oltre me\n" , peer_connected);
 
     // preparo il buffer
-    buf_len = sprintf(buffer , "%s %d %s" , "REQ_ENTR" , my_port , date);
+    buf_len = sprintf(buffer , "%s %d %s %d" , "REQ_ENTR" , my_port , date , request_id);
 
     for( i = 0 ; i < NUM_NEIGHBORS ; i++){
         if(neighbors[i] == 0) continue;

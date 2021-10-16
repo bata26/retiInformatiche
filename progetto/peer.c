@@ -62,6 +62,11 @@ int neighbors[NUM_NEIGHBORS];
 // gestione del file
 FILE * data_file;
 
+// il manager gestisce le richieste di flooding, quando invia il numero di peer connessi al peer,
+// gli invia anche un ID per la flooding request, cosi un peer sa se ha gia' partecipato o no
+// e si evitano loop di request
+int last_flood_request_id;
+
 int main(int argc , char** argv){
 
     //inizializzo i set
@@ -354,16 +359,43 @@ int main(int argc , char** argv){
                      *  -se non ho la F inoltro il pacchetto di flooding ai miei vicini, eccetto al sender
                      */
 
-                    int tamponi, casi;
+                    int tamponi, casi , request_id;
                     char def;
                     char date[DATE_LEN];
 
                     send_ACK(listen_socket , "ENTR_ACK" , sender_port);
 
-                    sscanf(server_buffer , "%s %d %s" , msg_type ,&sender_port , date);
+                    sscanf(server_buffer , "%s %d %s , %d" , msg_type ,&sender_port , date , &request_id);
+
+                    // richiesta gia gestita
+                    if(request_id == last_flood_request_id){
+                        printf("Ho gia' partecipato a questo flooding, interrompo\n");
+                        continue;
+                    }
+                    
+                    last_flood_request_id = request_id;
+                    
                     readFromFile(date , &tamponi , &casi , &def);
 
                     printf("Ho letto dal file:\nCASI:%d\nTAMPONI:%d\nDEF:%c\n" , tamponi , casi , def);
+
+                    if(def == 'F'){
+                        printf("Ho il dato definitivo\n");
+                    }else{
+                        int dest_port;
+                        if(neighbors[0] == sender_port && neighbors[1] != 0) dest_port = neighbors[1];
+                        if(neighbors[1] == sender_port && neighbors[0] != 0) dest_port = neighbors[0];
+                        
+                        printf("Non ho il dato definitivo quindi inoltro il pacchetto di richiesta a %d\n" , dest_port);
+
+                        send_pkt(listen_socket , server_buffer , MAX_STDIN_LEN , sender_port , "ENTR_ACK");
+
+
+                    }
+
+                    sprintf(server_buffer , "%s %s %d %d %c" , "ENTR_DAT" , date , tamponi , casi , def);
+                    printf("Invio al richidente i dati relativi alla data %s\n" , date);
+                    send_pkt(listen_socket , server_buffer , MAX_STDIN_LEN , sender_port , "ENT_DACK");
                 }
             }
 

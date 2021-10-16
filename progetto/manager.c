@@ -69,6 +69,10 @@ int day_close; // giorno in cui il server ha chiuso
 // struttura oer la gestione dei dati
 struct datiSalvati dati_giornalieri[DATA_LEN];
 
+
+// id delle request per flooding
+int flood_id;
+
 int i , j;
 
 
@@ -77,6 +81,8 @@ void closeRegister();
 int main(int argc , char** argv){
 
     printf("avvio il manager...\n");
+
+    flood_id = 0;
 
     //inizializzo i set
     FD_ZERO(&master);
@@ -191,8 +197,9 @@ int main(int argc , char** argv){
                 send_ACK(listen_socket , "PEER_ACK" , sender_port);
                 printf("Il peer %d richiede il numero di peer connessi\n" , sender_port);
                 
+                flood_id++;
                 // preparo il buffer
-                buf_len = sprintf(manager_buffer , "%s %d" , "PEER_LST" , num_peer);
+                buf_len = sprintf(manager_buffer , "%s %d %d" , "PEER_LST" , num_peer , flood_id);
                 send_pkt(listen_socket , manager_buffer , buf_len , sender_port , "PLST_ACK");
                 printf("numero di peer inviato e ricevuto ACK\n");
 

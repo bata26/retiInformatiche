@@ -24,6 +24,7 @@ PEER_LST        PLST_ACK // il manager manda il pacchetto contenente il numero d
 
 // tra peer e peer
 REQ_ENTR        ENTR_ACK // il peer richiede dati ai suoi vicini
+ENTR_DAT        ENT_DACK // il peer invia le informazioni che possiede su una specifica data
 
 /*
 Il manager controlla che arrivino le 6
