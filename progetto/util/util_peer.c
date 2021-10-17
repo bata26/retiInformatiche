@@ -64,6 +64,7 @@ void stampaComandi(int port){
 */
 void askToPeer(char date[DATE_LEN]){
     int peer_connected , i , request_id;
+    char receiver_buffer[MAX_STDIN_LEN];
 
     printf("Chiedo ai miei vicini informazioni sulla data: %s\n" , date );
 
@@ -83,10 +84,16 @@ void askToPeer(char date[DATE_LEN]){
     // preparo il buffer
     buf_len = sprintf(buffer , "%s %d %s %d" , "REQ_ENTR" , my_port , date , request_id);
 
+    memset(receiver_buffer , 0 , MAX_STDIN_LEN);
+
+
     for( i = 0 ; i < NUM_NEIGHBORS ; i++){
         if(neighbors[i] == 0) continue;
         printf("mando il pacchetto di flooding al neighbors %d\n" , neighbors[i]);
         send_pkt(listen_socket , buffer , buf_len , neighbors[i] , "ENTR_ACK");
+
+        recv_pkt(listen_socket , receiver_buffer , MAX_STDIN_LEN , neighbors[i] , "ENTR_DAT" , "ENT_DACK");
+        memset(receiver_buffer , 0 , MAX_STDIN_LEN);
     }
 
 

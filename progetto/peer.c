@@ -95,6 +95,8 @@ int main(int argc , char** argv){
     stampaComandi(my_port);
     setupData(peer_data);
 
+    last_flood_request_id = 0;
+
     while(1){
 
         // la select sposta da read_fds, in questo modo il set master
@@ -352,7 +354,7 @@ int main(int argc , char** argv){
             else{
                 memset(peer_buffer , 0 , MAX_STDIN_LEN);
 
-                if(strcmp(msg_type , "REQ_ENTRY")){
+                if(strcmp(msg_type , "REQ_ENTR") == 0){
                     /**
                      * devo:
                      *  -inviare i dati che ho relativi alla data richiesta, se ho la F nella data, evito di fare il flooding
@@ -362,10 +364,14 @@ int main(int argc , char** argv){
                     int tamponi, casi , request_id;
                     char def;
                     char date[DATE_LEN];
+                    int flood_requester;
+                    char request_buffer[MAX_STDIN_LEN];
 
                     send_ACK(listen_socket , "ENTR_ACK" , sender_port);
 
-                    sscanf(server_buffer , "%s %d %s , %d" , msg_type ,&sender_port , date , &request_id);
+                    sscanf(server_buffer , "%s %d %s %d" , msg_type ,&flood_requester , date , &request_id);
+
+                    printf("LAST_REQ->%d\nCURRENT_REQ->%d\n" , last_flood_request_id , request_id);
 
                     // richiesta gia gestita
                     if(request_id == last_flood_request_id){
@@ -379,23 +385,33 @@ int main(int argc , char** argv){
 
                     printf("Ho letto dal file:\nCASI:%d\nTAMPONI:%d\nDEF:%c\n" , tamponi , casi , def);
 
+                    sprintf(request_buffer , "%s %s %d %d %c" , "ENTR_DAT" , date , tamponi , casi , def);
+                    printf("Invio al richidente i dati relativi alla data %s\n" , date);
+                    send_pkt(listen_socket , request_buffer , MAX_STDIN_LEN , flood_requester , "ENT_DACK");
+
+                    //continue;
+
+                    // dopo aver inviato i miei dati controllo se devo fare flooding o no
+
                     if(def == 'F'){
                         printf("Ho il dato definitivo\n");
                     }else{
-                        int dest_port;
-                        if(neighbors[0] == sender_port && neighbors[1] != 0) dest_port = neighbors[1];
-                        if(neighbors[1] == sender_port && neighbors[0] != 0) dest_port = neighbors[0];
+
+                        int dest_port = 0;
+
+                        if(neighbors[0] == flood_requester && neighbors[1] != 0) dest_port = neighbors[1];
+                        if(neighbors[1] == flood_requester && neighbors[0] != 0) dest_port = neighbors[0];
                         
+                        if(!dest_port) continue;
+
                         printf("Non ho il dato definitivo quindi inoltro il pacchetto di richiesta a %d\n" , dest_port);
 
-                        send_pkt(listen_socket , server_buffer , MAX_STDIN_LEN , sender_port , "ENTR_ACK");
+                        send_pkt(listen_socket , server_buffer , MAX_STDIN_LEN , dest_port , "ENTR_ACK");
+                    }                    
+                }
 
-
-                    }
-
-                    sprintf(server_buffer , "%s %s %d %d %c" , "ENTR_DAT" , date , tamponi , casi , def);
-                    printf("Invio al richidente i dati relativi alla data %s\n" , date);
-                    send_pkt(listen_socket , server_buffer , MAX_STDIN_LEN , sender_port , "ENT_DACK");
+                else if(strcmp(msg_type , "ENTR_DAT") == 0){
+                    send_ACK(listen_socket , "ENT_DACK" , sender_port);
                 }
             }
 
