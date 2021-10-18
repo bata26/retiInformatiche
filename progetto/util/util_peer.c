@@ -79,6 +79,7 @@ void checkDataReceived(int port , char * buffer){
     num_response++;
 
     // aggrego
+    sscanf(buffer , "%s %d %s %d %d" , "msg" , my_port , date , request_id , to_flood)
     
 
     
