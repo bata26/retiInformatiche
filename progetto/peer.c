@@ -66,6 +66,19 @@ FILE * data_file;
 // gli invia anche un ID per la flooding request, cosi un peer sa se ha gia' partecipato o no
 // e si evitano loop di request
 int last_flood_request_id;
+int served_flag;
+
+// strutture per la gestione dei dati aggregati:
+// - numero di risposte ricevute per una richiesta
+// - numeri di porta ricevuti
+// - dato del giorno corrente
+// - dato del giorno precedente
+int peer_received[NUM_PEER];
+int num_response;
+int today_aggr;
+int yesterday_aggr;
+
+
 
 int main(int argc , char** argv){
 
@@ -361,7 +374,7 @@ int main(int argc , char** argv){
                      *  -se non ho la F inoltro il pacchetto di flooding ai miei vicini, eccetto al sender
                      */
 
-                    int tamponi, casi , request_id;
+                    int tamponi, casi , request_id , to_flood;
                     char def;
                     char date[DATE_LEN];
                     int flood_requester;
@@ -369,17 +382,18 @@ int main(int argc , char** argv){
 
                     send_ACK(listen_socket , "ENTR_ACK" , sender_port);
 
-                    sscanf(server_buffer , "%s %d %s %d" , msg_type ,&flood_requester , date , &request_id);
+                    sscanf(server_buffer , "%s %d %s %d %d" , msg_type ,&flood_requester , date , &request_id , &to_flood);
 
                     printf("LAST_REQ->%d\nCURRENT_REQ->%d\n" , last_flood_request_id , request_id);
 
                     // richiesta gia gestita
-                    if(request_id == last_flood_request_id){
+                    if(request_id == last_flood_request_id && served_flag != 0){
                         printf("Ho gia' partecipato a questo flooding, interrompo\n");
                         continue;
                     }
-                    
+                    // aggiorno l'id dell'ultima request e segno nel flag che non ho inoltrato il pacchetto a nessuno
                     last_flood_request_id = request_id;
+                    served_flag =  0;
                     
                     readFromFile(date , &tamponi , &casi , &def);
 
@@ -393,25 +407,35 @@ int main(int argc , char** argv){
 
                     // dopo aver inviato i miei dati controllo se devo fare flooding o no
 
-                    if(def == 'F'){
+                    if(def == 'F' || to_flood == 0){
                         printf("Ho il dato definitivo\n");
                     }else{
 
                         int dest_port = 0;
 
-                        if(neighbors[0] == flood_requester && neighbors[1] != 0) dest_port = neighbors[1];
-                        if(neighbors[1] == flood_requester && neighbors[0] != 0) dest_port = neighbors[0];
+                        /* non devo inoltrare la richiesta ne al sender ne al requester*/ 
+
+                        if(neighbors[0] != 0 && neighbors[0] != sender_port && neighbors[0] != flood_requester) dest_port = neighbors[0];
+                        if(neighbors[1] != 0 && neighbors[1] != sender_port && neighbors[1] != flood_requester) dest_port = neighbors[1];
                         
-                        if(!dest_port) continue;
+                        if(!dest_port)   continue;
 
                         printf("Non ho il dato definitivo quindi inoltro il pacchetto di richiesta a %d\n" , dest_port);
 
                         send_pkt(listen_socket , server_buffer , MAX_STDIN_LEN , dest_port , "ENTR_ACK");
-                    }                    
+                    }         
+
+                    served_flag = 1;           
                 }
 
                 else if(strcmp(msg_type , "ENTR_DAT") == 0){
+
+                    // anche qui
+
+                    printf("ACK INVIATO DALLA SELECT\nDOPO IL PKT DI %d\n" , sender_port);
                     send_ACK(listen_socket , "ENT_DACK" , sender_port);
+
+                    checkDataReceived(sender_port , server_buffer);
                 }
             }
 

@@ -8,5 +8,6 @@ void calculateTotal(char*  , char*);
 void getFinalDate(char*);
 int compareDates(char*, char*);
 void readFromFile(char* , int*, int* , char*);
+void setupForFlooding();
 
 

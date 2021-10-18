@@ -19,9 +19,17 @@ extern int my_port;
 extern int neighbors[NUM_NEIGHBORS];
 extern int manager_port;
 extern int listen_socket;
+extern int num_response;
+extern int today_aggr;
+extern int yesterday_aggr;
+extern int peer_received[NUM_PEER];
+
 char buffer[MAX_STDIN_LEN];
 int buf_len;
 char header[HEADER_LEN];
+
+int connected_peer;
+
 
 void cleanNeighbors(int * neighbors){
     int i;
@@ -29,11 +37,9 @@ void cleanNeighbors(int * neighbors){
     for( i = 0 ; i < NUM_NEIGHBORS ; i++){
         neighbors[i] = 0;
     }
-
-    
-
-
 }
+
+
 
 
 void stampaComandi(int port){
@@ -52,6 +58,44 @@ void stampaComandi(int port){
     printf("listen_socket:%d\n", listen_socket);
 }
 
+
+void checkDataReceived(int port , char * buffer){
+    int i , tamponi , casi , request_id;
+    char date[DATE_LEN];
+    char header[HEADER_LEN];
+
+    // devo controllare che il peer port non abbia gia inviato una risposta
+    if(num_response == connected_peer){
+        printf("Ho gia' esaminato le informazioni del peer %d\n" , port);
+        return;
+    }
+
+    for(i = 0 ; i <  NUM_PEER ; i++){
+        if(peer_received[i] == port) return;
+    }
+
+    // se esco e' perche non c'e' quel peer nell'array, quindi lo devo inserire
+    peer_received[num_response] = port;
+    num_response++;
+
+    // aggrego
+    
+
+    
+}
+
+void setupForFlooding(){
+    int i;
+
+    num_response = 0;
+    yesterday_aggr = today_aggr;
+    today_aggr = 0;
+
+    for(i = 0 ; i < NUM_PEER ; i++){
+        peer_received[i] = 0;
+    }
+}
+
 // manda ai vicini una richiesta per una specifica data
 /*
     Come sono sicuro che il peer abbia effettivamente il dato corretto?
@@ -63,7 +107,7 @@ void stampaComandi(int port){
 
 */
 void askToPeer(char date[DATE_LEN]){
-    int peer_connected , i , request_id;
+    int  i , request_id, to_flood; // to_flood indica se bisgona eseguire il flooding o no, se ad esempio connected_peer e' 3 il sender ha gia tra i suoi neighbor tutti i peer connessi
     char receiver_buffer[MAX_STDIN_LEN];
 
     printf("Chiedo ai miei vicini informazioni sulla data: %s\n" , date );
@@ -76,13 +120,24 @@ void askToPeer(char date[DATE_LEN]){
     send_pkt(listen_socket , "TOT_PEER" , HEADER_LEN , manager_port , "PEER_ACK");
     recv_pkt(listen_socket , buffer , MAX_STDIN_LEN , manager_port , "PEER_LST" , "PLST_ACK");
 
-    sscanf(buffer , "%s %d %d" , header , &peer_connected , &request_id);
-    peer_connected--;
+    sscanf(buffer , "%s %d %d" , header , &connected_peer , &request_id);
+    connected_peer--;
 
-    printf("Ci sono %d peer attualmente connessi oltre me\n" , peer_connected);
+    printf("Ci sono %d peer attualmente connessi oltre me\n" , connected_peer);
+
+    if(connected_peer == 0){
+        printf("Sono L'unico peer connesso impossibile ottenere il dato richiesto\n");
+        return;
+    }else if(connected_peer == 2){
+        to_flood = 0;
+    }else{
+        to_flood = 1;
+    }
+
+    setupForFlooding();
 
     // preparo il buffer
-    buf_len = sprintf(buffer , "%s %d %s %d" , "REQ_ENTR" , my_port , date , request_id);
+    buf_len = sprintf(buffer , "%s %d %s %d %d" , "REQ_ENTR" , my_port , date , request_id , to_flood);
 
     memset(receiver_buffer , 0 , MAX_STDIN_LEN);
 
@@ -93,6 +148,9 @@ void askToPeer(char date[DATE_LEN]){
         send_pkt(listen_socket , buffer , buf_len , neighbors[i] , "ENTR_ACK");
 
         recv_pkt(listen_socket , receiver_buffer , MAX_STDIN_LEN , neighbors[i] , "ENTR_DAT" , "ENT_DACK");
+
+        checkDataReceived(neighbors[i] , receiver_buffer);
+
         memset(receiver_buffer , 0 , MAX_STDIN_LEN);
     }
 

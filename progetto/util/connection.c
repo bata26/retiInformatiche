@@ -92,9 +92,15 @@ void send_pkt(int sd , char* msg , int buf_len , int port_dest , char * expected
 
         printf("Pacchetto inviato\nResto in attesa dell'ack\n");
         
-        //setup interval
+
         interval.tv_sec = 1;
         interval.tv_usec = 5000;
+
+        //setup interval, se richiesta di dati aspetto di piu
+        if(strcmp(msg , "REQ_ENTR") == 0 || strcmp(msg , "ENTR_DAT") == 0){
+            interval.tv_sec = 2;
+            interval.tv_usec = 5000;
+        }
 
         // ho inviato msg, aspetto di ricevere l'ack
         FD_ZERO(&wait);
@@ -108,6 +114,13 @@ void send_pkt(int sd , char* msg , int buf_len , int port_dest , char * expected
 
             // ricevo ack
             ret = recvfrom(sd , received ,RECEIVED_LEN ,  0 , (struct sockaddr*)&tmp_addr , &tmp_len);
+
+            // controllo se entro un loop di richieste del tipo 
+            // int sd , char* msg , int buf_len , int port_dest , char * expected_ack
+            if(strcmp(msg , "REQ_ENTR") == 0 && dest_addr.sin_port == tmp_addr.sin_port && dest_addr.sin_addr.s_addr == tmp_addr.sin_addr.s_addr && strcmp(msg , received) == 0){
+                printf("Rischio di entrare in un loop di richieste, provo a uscire e a gestire la richiesta\n");
+                send = 1;
+            }
 
             
             // controllo di aver ricevuto l'ack effettivamente dal processo a cui l'avevo inviato, 
