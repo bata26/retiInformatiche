@@ -77,8 +77,12 @@ int peer_received[NUM_PEER];
 int num_response;
 int today_aggr;
 int yesterday_aggr;
+int today_flag; // settata a 1 quando troviamo il def  
+char aggr_type[AGGR_LEN];
 
 
+//DEBUG
+char comando[MAX_COMMAND_LEN];
 
 int main(int argc , char** argv){
 
@@ -90,6 +94,7 @@ int main(int argc , char** argv){
 
     //ricavo il numero di porta
     my_port = atol(argv[1]);
+    
 
     //printf("atoi -- > %d" , atoi(argv[1]));
 
@@ -116,6 +121,7 @@ int main(int argc , char** argv){
         // non viene modificato
         read_fds = master; 
 
+        //if(strcmp(comando , "start") == 0) goto connetti;
         select(fdmax , &read_fds , NULL , NULL , NULL);
 
         // se è arrivato qualcosa da stdin
@@ -261,6 +267,9 @@ int main(int argc , char** argv){
 
                 printf("Prima della calculate total:\nDataIniziale:%s\nDataFinale:%s\n" ,  data_iniziale , data_finale);
 
+                strcpy(aggr_type , tipo);
+                printf("aggr_type--> %s\n" , aggr_type);
+
                 if(strcmp(tipo_aggr , "TOTALE") == 0){
                     calculateTotal(data_iniziale , data_finale );
                 }
@@ -384,6 +393,18 @@ int main(int argc , char** argv){
 
                     sscanf(server_buffer , "%s %d %s %d %d" , msg_type ,&flood_requester , date , &request_id , &to_flood);
 
+                    printf("Preparo il pacchetto per il flood requester\n");
+
+                    readFromFile(date , &tamponi , &casi , &def);
+                    sprintf(request_buffer , "%s %s %d %d %c" , "ENTR_DAT" , date , tamponi , casi , def);
+                    send_pkt(listen_socket , request_buffer , MAX_STDIN_LEN , flood_requester , "ENT_DACK");
+
+                    //inoltro il pacchetto al mio vicino
+                    if(neighbors[0] == -1 || neighbors[0] == flood_requester) continue;
+
+                    send_pkt(listen_socket ,server_buffer , MAX_STDIN_LEN , neighbors[0] , "ENTR_ACK");
+
+                    /*
                     printf("LAST_REQ->%d\nCURRENT_REQ->%d\n" , last_flood_request_id , request_id);
 
                     // richiesta gia gestita
@@ -413,7 +434,7 @@ int main(int argc , char** argv){
 
                         int dest_port = 0;
 
-                        /* non devo inoltrare la richiesta ne al sender ne al requester*/ 
+                         non devo inoltrare la richiesta ne al sender ne al requester*
 
                         if(neighbors[0] != 0 && neighbors[0] != sender_port && neighbors[0] != flood_requester) dest_port = neighbors[0];
                         if(neighbors[1] != 0 && neighbors[1] != sender_port && neighbors[1] != flood_requester) dest_port = neighbors[1];
@@ -425,18 +446,21 @@ int main(int argc , char** argv){
                         send_pkt(listen_socket , server_buffer , MAX_STDIN_LEN , dest_port , "ENTR_ACK");
                     }         
 
-                    served_flag = 1;           
+                    served_flag = 1;   
+                    */        
                 }
 
-                else if(strcmp(msg_type , "ENTR_DAT") == 0){
-
-                    // anche qui
-
-                    printf("ACK INVIATO DALLA SELECT\nDOPO IL PKT DI %d\n" , sender_port);
-                    send_ACK(listen_socket , "ENT_DACK" , sender_port);
-
-                    checkDataReceived(sender_port , server_buffer);
-                }
+                //else if(strcmp(msg_type , "ENTR_DAT") == 0){
+//
+                //    // anche qui
+//
+                //    printf("ACK INVIATO DALLA SELECT\nDOPO IL PKT DI %d\n" , sender_port);
+                //    send_ACK(listen_socket , "ENT_DACK" , sender_port);
+//
+                //    if(checkDataReceived(sender_port)){
+                //        getAggregateValue(server_buffer);
+                //    }
+                //}
             }
 
             FD_CLR(listen_socket , &read_fds);

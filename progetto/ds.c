@@ -78,18 +78,7 @@ int main(int argc , char** argv){
     setupNeighbors(neighbors);
 
     printf("\n\n");
-    //for ( i = 0; i < NUM_PEER; i++)
-    //{
-    //    
-    //    printf("STO ESAMINANDO IL PEER %d\n" , peer[i]);
-//
-    //    for(j = 0 ; j < NUM_NEIGHBORS ; j++){
-    //        printf("vicino %d ---> %d\n" , j , neighbors[i][j]);
-    //    }
-    //    printf("\n");
-    //}
-
-    //printf("Mi metto in attesa\n");
+    
     while(1){
 
         // la select sposta da read_fds, in questo modo il set master
@@ -174,20 +163,12 @@ int main(int argc , char** argv){
                 printf("Connessione riuscita con successo\n");
 
 
+                
                 for( i = 0 ; i< NUM_PEER ; i++){
                     updated[i] = 0;
                 }
 
-                updated[index] = 1;
-
-
-
-                updateNeighbors(peer , neighbors , updated);
-
-                //for( i = 0 ; i< NUM_PEER ; i++){
-                //    printf("DOPO: i->%d , updated[i]->%d\n" , i , updated[i]);
-                //}
-
+                getNeighbors(updated);
 
                 for(i = 0 ; i <  NUM_PEER ; i++){
                     if(updated[i] == 0) continue;
@@ -235,6 +216,8 @@ int main(int argc , char** argv){
                 index = getPeerIndex(sender_port); 
                 peer[index] = 0;
 
+                num_peer--;
+
 
                 // rimuovo il peer dalla struct dei neighbors
                 cleanNeighbors(sender_port , neighbors);
@@ -243,7 +226,7 @@ int main(int argc , char** argv){
                     updated[i] = 0;
                 }
 
-                updateNeighbors(peer , neighbors , updated);
+                getNeighbors(updated);
 
                 for(i = 0 ; i < NUM_PEER ; i++){
                     if(updated[i] == 0) continue;

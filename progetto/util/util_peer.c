@@ -23,6 +23,8 @@ extern int num_response;
 extern int today_aggr;
 extern int yesterday_aggr;
 extern int peer_received[NUM_PEER];
+extern int today_flag; // settata a 1 quando troviamo il def  
+extern char aggr_type[AGGR_LEN];
 
 char buffer[MAX_STDIN_LEN];
 int buf_len;
@@ -39,7 +41,25 @@ void cleanNeighbors(int * neighbors){
     }
 }
 
+void getAggregateValue(char * buffer){
+    int casi, tamponi , res;
+    char def;
+    char date[DATE_LEN];
+    char msg[HEADER_LEN];
+    
+    if(today_flag) return;
 
+    sscanf(buffer , "%s %s %d %d %c" , msg , date , &tamponi , &casi , &def);
+
+    res = (strcmp(aggr_type , "TAMPONE") == 0) ? tamponi : casi;
+    
+    if(def == 'F'){
+        today_aggr = res;
+        today_flag = 1;
+    }else{
+        today_aggr += res;
+    }
+}
 
 
 void stampaComandi(int port){
@@ -58,31 +78,29 @@ void stampaComandi(int port){
     printf("listen_socket:%d\n", listen_socket);
 }
 
+int allPeer(){
+    return num_response == connected_peer;
+}
 
-void checkDataReceived(int port , char * buffer){
-    int i , tamponi , casi , request_id;
-    char date[DATE_LEN];
-    char header[HEADER_LEN];
+// controlla se la porta da cui abbiamo ricevuto entr_dat sia gia stata consultata oppure no
+int checkDataReceived(int port){
+    int i;
 
     // devo controllare che il peer port non abbia gia inviato una risposta
     if(num_response == connected_peer){
         printf("Ho gia' esaminato le informazioni del peer %d\n" , port);
-        return;
+        return 0;
     }
 
     for(i = 0 ; i <  NUM_PEER ; i++){
-        if(peer_received[i] == port) return;
+        if(peer_received[i] == port) return 0;
     }
 
     // se esco e' perche non c'e' quel peer nell'array, quindi lo devo inserire
     peer_received[num_response] = port;
     num_response++;
-
-    // aggrego
-    sscanf(buffer , "%s %d %s %d %d" , "msg" , my_port , date , request_id , to_flood)
     
-
-    
+    return 1;
 }
 
 void setupForFlooding(){
@@ -91,6 +109,7 @@ void setupForFlooding(){
     num_response = 0;
     yesterday_aggr = today_aggr;
     today_aggr = 0;
+    today_flag = 0;
 
     for(i = 0 ; i < NUM_PEER ; i++){
         peer_received[i] = 0;
@@ -108,7 +127,7 @@ void setupForFlooding(){
 
 */
 void askToPeer(char date[DATE_LEN]){
-    int  i , request_id, to_flood; // to_flood indica se bisgona eseguire il flooding o no, se ad esempio connected_peer e' 3 il sender ha gia tra i suoi neighbor tutti i peer connessi
+    int  i; // to_flood indica se bisgona eseguire il flooding o no, se ad esempio connected_peer e' 3 il sender ha gia tra i suoi neighbor tutti i peer connessi
     char receiver_buffer[MAX_STDIN_LEN];
 
     printf("Chiedo ai miei vicini informazioni sulla data: %s\n" , date );
@@ -121,7 +140,7 @@ void askToPeer(char date[DATE_LEN]){
     send_pkt(listen_socket , "TOT_PEER" , HEADER_LEN , manager_port , "PEER_ACK");
     recv_pkt(listen_socket , buffer , MAX_STDIN_LEN , manager_port , "PEER_LST" , "PLST_ACK");
 
-    sscanf(buffer , "%s %d %d" , header , &connected_peer , &request_id);
+    sscanf(buffer , "%s %d" , header , &connected_peer );
     connected_peer--;
 
     printf("Ci sono %d peer attualmente connessi oltre me\n" , connected_peer);
@@ -129,32 +148,32 @@ void askToPeer(char date[DATE_LEN]){
     if(connected_peer == 0){
         printf("Sono L'unico peer connesso impossibile ottenere il dato richiesto\n");
         return;
-    }else if(connected_peer == 2){
-        to_flood = 0;
-    }else{
-        to_flood = 1;
     }
 
     setupForFlooding();
 
     // preparo il buffer
-    buf_len = sprintf(buffer , "%s %d %s %d %d" , "REQ_ENTR" , my_port , date , request_id , to_flood);
+    buf_len = sprintf(buffer , "%s %d %s" , "REQ_ENTR" , my_port , date);
 
     memset(receiver_buffer , 0 , MAX_STDIN_LEN);
 
+    // mando la req al primo vicino poi mi metto in attesa di tutte le risposte
+    send_pkt(listen_socket , buffer , buf_len , neighbors[0] , "ENTR_ACK");
 
-    for( i = 0 ; i < NUM_NEIGHBORS ; i++){
-        if(neighbors[i] == 0) continue;
-        printf("mando il pacchetto di flooding al neighbors %d\n" , neighbors[i]);
-        send_pkt(listen_socket , buffer , buf_len , neighbors[i] , "ENTR_ACK");
+    while(!allPeer() && !today_flag){
+        int port;
 
-        recv_pkt(listen_socket , receiver_buffer , MAX_STDIN_LEN , neighbors[i] , "ENTR_DAT" , "ENT_DACK");
-
-        checkDataReceived(neighbors[i] , receiver_buffer);
-
-        memset(receiver_buffer , 0 , MAX_STDIN_LEN);
+        port = recv_pkt(listen_socket , receiver_buffer , MAX_STDIN_LEN ,ALL_PEER , "ENTR_DAT" , "ENT_DACK");
+        
+        if(checkDataReceived(port)){
+            // la risposta e' valida quindi posso aggiungere i dati
+            getAggregateValue(receiver_buffer);
+        }
     }
 
+
+    printf("flooding terminato\n");
+    printf("Il totale di %s trovati per la data %s e' %d\n" , aggr_type , date , today_aggr);
 
 }
 
@@ -279,47 +298,6 @@ int checkDates(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN] , char 
 }
 
 /*
-FILE * findFirstDate(char data_iniziale[DATE_LEN] , int my_port){
-    FILE* file_data;
-    char filename[DATA_LEN];
-    char temp_data[DATE_LEN];
-    
-    
-
-    sprintf(filename , "%s%d%s" , FILE_PATH , my_port , ".txt");
-
-    file_data = fopen(filename , "r");
-    
-
-    if(file_data == NULL){
-        printf("Impossibile aprire il file\n");
-        return NULL;
-    }
-
-
-    if(strcmp(data_iniziale , "*") == 0){
-        return file_data;
-    }
-
-    while(!file_data == NULL){
-        FILE * temp_data_file;
-        temp_data_file = file_data;
-        //printf("nel while");
-        fscanf(file_data , "%s" , temp_data);
-        //printf("Analizzo la data %s\n" , temp_data);
-
-        if(strcmp(temp_data , data_iniziale) == 0) return temp_data_file;
-        
-    }
-
-    printf("Impossibile trovare la data desiderata");
-    return file_data;
-
-
-}
-*/
-
-/*
 	Return Value:
 	1) 0 -> Le due date sono uguali
 	2) 1 -> first_date e' PRECEDENTE a last_date
@@ -416,51 +394,15 @@ void calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN]){
 			    printf("Sono arrivato alla data iniziale, inizio l'aggregazione\n");
 	            found = 1;
 		    }
-
-		    /* current
-		    else if(ret == 2){
-			    printf("Ho superato la data iniziale, devo chiedere ai peer\n");
-
-                askToPeer();
-	            found = 1;
-
-		    }else if(ret == 1){
-			    printf("Ancora non raggiunta la data iniziale\n");
-		    } */
-
 		    printf("\n");
         }
 
         if(found){ // trovato la prima data quindi conto
-
+            today_aggr = (strcmp(aggr_type , "TAMPONE") == 0) ? tamponi : casi;
             if(final != 'F'){
                 askToPeer(current_date);
-                break;
             }
         }
-
-        /*
-        printf("%s\n" , line_buffer);
-
-        // se e' il primo non ho la data nel puntatore del file
-        if(first){
-            sscanf(line_buffer , "%d %d" , &tamponi , &casi);
-            first = 0;
-        }else{
-            sscanf(line_buffer , "%s %d %d" , temp_data , &tamponi , &casi);
-            printf("temp_data--> %s\n" , temp_data);
-        }
-
-        if(strcmp(tipo , "TAMPONE") == 0){
-            tot += tamponi;
-            printf("TAMPONI == %d\n" , tamponi);
-        }else{
-            tot += casi;
-            printf("CASI == %d\n" , casi);
-        }
-
-        printf("tot == %d\n" , tot);
-        */
 
     }
 

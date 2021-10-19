@@ -2,9 +2,93 @@
 
 #include "costanti.h"
 
+extern int num_peer;
+extern int neighbors[NUM_PEER][NUM_NEIGHBORS];
+extern int peer[NUM_PEER];
 
 int getPeerIndex(int peer_port){
     return ((peer_port % BASE_PORT) - 1);
+}
+
+
+void findNextNeighbor(int direction, int index){
+    int found, temp_index;
+
+    found = 0;
+
+    if(direction){
+        temp_index = (index + 1)%NUM_PEER;
+    }else{
+        if(index == 0) temp_index = NUM_PEER - 1;
+        else temp_index = index - 1;
+    }
+
+    while(!found && temp_index != index ){
+
+        if(peer[temp_index] != 0){
+            neighbors[index][direction] = peer[temp_index];
+            break;
+        }
+
+        if(direction){
+            temp_index = (temp_index + 1)%NUM_PEER;
+        }else{
+            if(temp_index == 0) temp_index = NUM_PEER - 1;
+            else temp_index--;
+        }
+    }
+}
+
+
+// prende in input una porta e modifica la struttra neighbors con i nuovi vicini di quel peer
+void getNeighbors(int *updated){
+    int i, temp_first_neig , temp_second_neig , index;
+
+    if(num_peer == 1){
+        printf("un solo peer connesso, nessun vicino disponibile\n");
+        return;
+    }
+
+    if(num_peer == 2){
+        printf("Branch con due soli peer connessi\n");
+        for(i = 0; i < NUM_PEER ; i++){
+            if(peer[i] == 0) continue;
+            
+            printf("Analizzo il peer %d, i suoi vicini prima della findnext sono:\n%d\n%d\n" , peer[i] , neighbors[i][0] , neighbors[i][1]);
+            findNextNeighbor(0 , i);
+
+            // controllo di non avere duplicare, puo' succedere quando si disconnette il peer che era in posizione 0
+            if(neighbors[i][0] == neighbors[i][1]) neighbors[i][1] = -1;
+
+            updated[i] = 1;
+        }
+
+        return;
+    }
+
+    /*
+        scorro tutti i peer, per ogni peer:
+            salvo i neighbors correnti
+            cerco un peer piu vicino verso destra
+            cerco un peer piu vicino verso sinistra
+            aggiorno la struttura
+            se i nuovi vicini sono diversi da quelli precedenti, mando un pacchetto di aggiornamento
+    */
+    for(i = 0 ; i < NUM_PEER ; i++){
+        int found , temp_index;
+
+        if(peer[i] == 0) continue;
+
+        temp_first_neig = neighbors[i][0];
+        temp_second_neig = neighbors[i][1];
+
+        findNextNeighbor(0 , i);
+        findNextNeighbor(1 , i);
+
+        if(temp_first_neig != neighbors[i][0]) updated[i] = 1;
+        if(temp_second_neig != neighbors[i][1]) updated[i] = 1;
+        
+    }
 }
 
 // aggiunge un peer alla lista dei peer
@@ -17,91 +101,6 @@ void removePeer(int peer , int* peer_list ){
     peer_list[getPeerIndex(peer)] = 0;
 }
 
-// cerca tra i peer connessi i due piu vicini al peer_port e li restituisce nella lista neighbors
-void getNeighbors(int peer_port , int* neighbors , int* peer_list){
-    int index , cur_next , cur_prev , i , cur_prev_diff , cur_next_diff , cur_diff; // i cur indicano gli indici dei presenti in neighbors
-
-    // ottengo l'index del peer corrente
-    index = getPeerIndex(peer_port);
-
-    cur_prev = -1; // indice relativo alla posizione 0 dell'array dei vicini 
-    cur_next = -1; // indice relativo alla posizione 1 dell'array dei vicini 
-
-    neighbors[0] = -1; // inizializzo i neighbors cosi da sapere se sono presenti o no
-    neighbors[1] = -1; // inizializzo i neighbors cosi da sapere se sono presenti o no
-    
-    cur_prev_diff = NUM_NEIGHBORS; // differenza di indice corrente tra il peer alla posizione 0 e il peer corrente
-    cur_next_diff = NUM_NEIGHBORS; // differenza di indice corrente tra il peer alla posizione 1 e il peer corrente
-
-
-    // cerco gli indici piu "vicini" al peer
-    for(i = 0 ; i < NUM_PEER ; i++){
-
-        // se sono io salto
-        if( i == index ) continue;
-        
-        // se esiste il peer .. 
-        if(peer_list[i] != 0){
-
-            // primo posto vuoto
-            if( cur_prev == -1){
-                neighbors[0] = peer_list[i];
-                cur_prev = i;
-
-                cur_prev_diff = (index > i) ? (index - i) : (i - index);
-
-            // secondo posto vuoto
-            }else if(cur_next == -1){
-                neighbors[1] = peer_list[i];
-                cur_next = i;
-
-                cur_next_diff = (index > i) ? (index - i) : (i - index);
-
-            //entrambi i posti pieni, controllo se quello che sto esaminando e' piu vicino
-            }else{
-
-                // differenza tra quello che sto esaminando e il peer
-                cur_diff = (index > i) ? (index - i) : (i - index);
-
-                // se e' piu vicino di neighbors[0]
-                if(cur_diff < cur_prev_diff){
-
-                    neighbors[0] = peer_list[i];
-                    cur_prev = i;
-                    cur_prev_diff = (index > i) ? (index - i) : (i - index);
-
-                }else if(cur_diff < cur_next_diff){
-
-                    neighbors[1] = peer_list[i];
-                    cur_next = i;
-                    cur_next_diff = (index > i) ? (index - i) : (i - index);
-
-                }
-            }
-        }
-    }
-
-    printf("done");
-
-}
-
-// controlla se rispetto ai vecchi peer la connessione/disconnessione ha portato ad un cambiamento
-int checkIfUpdated(int* neighbors , int* new_neighbors){
-    int updated = 0;
-
-    if(neighbors[0] != new_neighbors[0]){
-        neighbors[0] = new_neighbors[0];
-        updated = 1; 
-    }
-
-    if(neighbors[1] != new_neighbors[1]){
-        neighbors[1] = new_neighbors[1];
-        updated = 1; 
-    }
-
-    return updated;
-}
-
 
 // "pulisce" la matrice neighbors 
 void setupNeighbors(int neighbors[][NUM_NEIGHBORS]){
@@ -110,26 +109,6 @@ void setupNeighbors(int neighbors[][NUM_NEIGHBORS]){
     for(i = 0 ; i < NUM_PEER ; i++){
         for(j = 0 ; j < NUM_NEIGHBORS ; j++){
             neighbors[i][j] = -1;
-        }
-    }
-}
-
-// controlla tutta la lista dei peer e aggiorna le struttre dati
-void updateNeighbors(int* peer_list , int  neighbors[][NUM_NEIGHBORS] , int * updated){
-    int i;
-    int neighbors_current_peer[NUM_NEIGHBORS];
-    // ogni volta che aggiungo un peer controllo se i vicini sono cambiati o no
-    for(i = 0 ; i < NUM_PEER ; i++){
-        if(peer_list[i] == 0) continue;
-
-        // aggiorno la struttura
-        getNeighbors(peer_list[i] , neighbors_current_peer , peer_list);
-
-        // controllo se ho cambiato qualcosa, se ho cambiato qualcosa mando un pacchetto di UPDATE
-
-
-        if(checkIfUpdated(neighbors[i] , neighbors_current_peer)){
-            updated[i] = 1;
         }
     }
 }

@@ -183,7 +183,7 @@ int recv_send_pkt(int socket , char * buf , int buf_len){
 
 
 
-void recv_pkt(int socket , char* buffer , int buf_len , int sender_port , char* expected_header , char * ack_to_send){
+int recv_pkt(int socket , char* buffer , int buf_len , int sender_port , char* expected_header , char * ack_to_send){
     struct sockaddr_in sender_addr;
     socklen_t sender_addr_len;
     int received;
@@ -192,7 +192,7 @@ void recv_pkt(int socket , char* buffer , int buf_len , int sender_port , char* 
 
     received = 0;
 
-    printf("Mi metto in attesa del pacchetto %s\n" , expected_header);
+    printf("Mi metto in attesa del pacchetto %s\nda %d, ntohs(port)=%d\n" , expected_header , sender_port , ntohs(sender_port));
 
     while(!received){
         FD_ZERO(&read_fds);
@@ -206,7 +206,9 @@ void recv_pkt(int socket , char* buffer , int buf_len , int sender_port , char* 
 
             sscanf(buffer , "%s" , header_buf);
 
-            if(ntohs(sender_addr.sin_port) == sender_port && strcmp(expected_header , header_buf) == 0){
+            printf("sender_addr->sin_port %d\nntohs(port)->%d\n" , sender_addr.sin_port , ntohs(sender_addr.sin_port));
+
+            if( ( (sender_port == ALL_PEER) || (ntohs(sender_addr.sin_port) == sender_port) ) && strcmp(expected_header , header_buf) == 0){
                 printf("Ho ricevuto da %d il pacchetto %s\n" , ntohs(sender_addr.sin_port) , buffer);
                 received = 1;
             }else{
@@ -216,6 +218,8 @@ void recv_pkt(int socket , char* buffer , int buf_len , int sender_port , char* 
     }
 
     send_ACK(socket , ack_to_send , ntohs(sender_addr.sin_port));
+
+    return ntohs(sender_addr.sin_port);
 
 
 } 

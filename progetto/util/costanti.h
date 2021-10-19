@@ -29,6 +29,8 @@
 // lunghezza massima di un pacchetto
 #define MAX_PKT_LEN 50
 
+// codice per ricevere pacchetti da tutti i peer
+#define ALL_PEER 1010
 
 // numero di tipi
 #define DATA_LEN 2
