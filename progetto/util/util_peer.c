@@ -34,6 +34,65 @@ char header[HEADER_LEN];
 int connected_peer;
 
 
+void updateFile(char * buffer){
+    /*
+    Struttura del buffer:
+    header data tamponi casi def
+    */
+
+    FILE * src;
+    FILE * dest;
+    char filename[FILE_LEN];
+    char new_filename[FILE_LEN];
+    char line_buffer[50];
+    char temp_date[DATE_LEN];
+    char buffer_date[DATE_LEN];
+    char buffer_header[HEADER_LEN];
+
+    int buffer_tamponi, buffer_casi;
+    char buffer_def;
+
+    printf("Aggiorno il mio file\n");
+
+    sscanf(buffer , "%s %s %d %d %c" , buffer_header , buffer_date , &buffer_tamponi , &buffer_casi , &buffer_def);
+
+
+    sprintf(filename , "%s%d%s" ,  FILE_PATH , my_port , ".txt");
+    sprintf(new_filename , "%s%s%d%s" ,  "new_" , FILE_PATH , my_port , ".txt");
+
+    src = fopen(filename , "r");
+    dest = fopen(new_filename , "w");
+
+    printf("filename:%s\nnew_filename:%s\n" , filename , new_filename);
+
+    if(src == NULL || dest == NULL){
+        printf("Impossibile aggiornare il file\n");
+        return;
+    }
+
+    while(fgets(line_buffer , 50 , src)){
+
+        sscanf(line_buffer , "%s" , temp_date);
+
+        //stessa data, quindi inserisco i dati del buffer
+        if(compareDates(temp_date , buffer_date) == 0){
+            fprintf(dest , "%s %d %d %c\n" , temp_date , buffer_tamponi , buffer_casi , buffer_def);
+        }else{
+            // copio le info dal file precedente
+            fprintf(dest , "%s" , line_buffer);
+        }
+    }
+
+    if(remove(filename) == 0){
+        if(rename(new_filename , filename) == 0){
+            printf("Aggiornamento Riuscito con successo!\n");
+        }
+    }
+
+    fclose(src);
+    fclose(dest);
+}
+
 void cleanNeighbors(int * neighbors){
     int i;
 
@@ -108,7 +167,6 @@ void setupForFlooding(){
     int i;
 
     num_response = 0;
-    yesterday_aggr = today_aggr;
     today_flag = 0;
 
     for(i = 0 ; i < NUM_PEER ; i++){
@@ -408,6 +466,7 @@ int calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN]){
         }
 
         if(found){ // trovato la prima data quindi conto
+            yesterday_aggr = today_aggr;
             today_aggr = (strcmp(util_type , "TAMPONE") == 0) ? tamponi : casi;
 
             if(final != 'F'){
