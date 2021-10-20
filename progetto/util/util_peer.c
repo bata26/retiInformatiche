@@ -24,7 +24,8 @@ extern int today_aggr;
 extern int yesterday_aggr;
 extern int peer_received[NUM_PEER];
 extern int today_flag; // settata a 1 quando troviamo il def  
-extern char aggr_type[AGGR_LEN];
+extern char util_aggr_type[AGGR_LEN]; // TOTALE, VARIAZIONE
+extern char util_type[AGGR_LEN]; // TAMPONE CASO 
 
 char buffer[MAX_STDIN_LEN];
 int buf_len;
@@ -51,7 +52,7 @@ void getAggregateValue(char * buffer){
 
     sscanf(buffer , "%s %s %d %d %c" , msg , date , &tamponi , &casi , &def);
 
-    res = (strcmp(aggr_type , "TAMPONE") == 0) ? tamponi : casi;
+    res = (strcmp(util_type , "TAMPONE") == 0) ? tamponi : casi;
     
     if(def == 'F'){
         today_aggr = res;
@@ -108,7 +109,6 @@ void setupForFlooding(){
 
     num_response = 0;
     yesterday_aggr = today_aggr;
-    today_aggr = 0;
     today_flag = 0;
 
     for(i = 0 ; i < NUM_PEER ; i++){
@@ -126,11 +126,11 @@ void setupForFlooding(){
         questo non ha le informazioni di quel giorno salvate
 
 */
-void askToPeer(char date[DATE_LEN]){
+void askToPeer(char date[DATE_LEN] , int* tot){
     int  i; // to_flood indica se bisgona eseguire il flooding o no, se ad esempio connected_peer e' 3 il sender ha gia tra i suoi neighbor tutti i peer connessi
     char receiver_buffer[MAX_STDIN_LEN];
 
-    printf("Chiedo ai miei vicini informazioni sulla data: %s\n" , date );
+    //printf("Chiedo ai miei vicini informazioni sulla data: %s\n" , date );
 
     if(neighbors[0] == 0 && neighbors[1] == 0){
         printf("Non ho vicini a cui chidere\n");
@@ -143,7 +143,7 @@ void askToPeer(char date[DATE_LEN]){
     sscanf(buffer , "%s %d" , header , &connected_peer );
     connected_peer--;
 
-    printf("Ci sono %d peer attualmente connessi oltre me\n" , connected_peer);
+    //printf("Ci sono %d peer attualmente connessi oltre me\n" , connected_peer);
 
     if(connected_peer == 0){
         printf("Sono L'unico peer connesso impossibile ottenere il dato richiesto\n");
@@ -172,8 +172,12 @@ void askToPeer(char date[DATE_LEN]){
     }
 
 
-    printf("flooding terminato\n");
-    printf("Il totale di %s trovati per la data %s e' %d\n" , aggr_type , date , today_aggr);
+    //printf("flooding terminato\n");
+    //printf("Il totale di %s trovati per la data %s e' %d\n" , aggr_type , date , today_aggr);
+
+    *tot += today_aggr;
+
+    //printf("tot-->%d\n" , *tot);
 
 }
 
@@ -273,13 +277,16 @@ int checkDates(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN] , char 
     printf("Dopo il controllo con *\n");
 
     sscanf(data_iniziale , "%d:%d:%d" , &start_date[0] , &start_date[1] , &start_date[2]);
-    sscanf(data_iniziale , "%d:%d:%d" , &end_date[0] , &end_date[1] , &end_date[2]);
+    sscanf(data_finale , "%d:%d:%d" , &end_date[0] , &end_date[1] , &end_date[2]);
 
     printf("Dopo la sscanf\n");
 
+    printf("START:\n0->%d\n1->%d\n2->%d\n" , start_date[0] , start_date[1] , start_date[2]);
+    printf("END:\n0->%d\n1->%d\n2->%d\n" , end_date[0] , end_date[1] , end_date[2]);
+
     if(!checkSingleDate(data_iniziale) || !checkSingleDate(data_finale)) return 0;
 
-
+    printf("dopo check single date\n");
     /*
         date[0] -> day
         date[1] -> month
@@ -311,8 +318,8 @@ int compareDates(char first_date[DATE_LEN] , char last_date[DATE_LEN]){
 	sscanf(first_date , "%d:%d:%d" , &num_first_date[0] , &num_first_date[1] , &num_first_date[2]);
 	sscanf(last_date , "%d:%d:%d" , &num_last_date[0] , &num_last_date[1] , &num_last_date[2]);
 
-	printf("FIRST DATE:\ngiorno-> %d\nmese->%d\nanno->%d\n" , num_first_date[0] , num_first_date[1] , num_first_date[2]);
-	printf("LAST DATE:\ngiorno-> %d\nmese->%d\nanno->%d\n" , num_last_date[0] , num_last_date[1] , num_last_date[2]);
+	//printf("FIRST DATE:\ngiorno-> %d\nmese->%d\nanno->%d\n" , num_first_date[0] , num_first_date[1] , num_first_date[2]);
+	//printf("LAST DATE:\ngiorno-> %d\nmese->%d\nanno->%d\n" , num_last_date[0] , num_last_date[1] , num_last_date[2]);
 
 	// uguali
 	if( ( num_first_date[0] ==  num_last_date[0]) && (num_first_date[1] ==  num_last_date[1]) && (num_first_date[2] ==  num_last_date[2])) return 0;
@@ -334,17 +341,17 @@ int compareDates(char first_date[DATE_LEN] , char last_date[DATE_LEN]){
 }
 
 
-void calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN]){
+int calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN]){
     FILE * file_data;
     int tamponi , casi;
     char prec_date[DATE_LEN] , current_date[DATE_LEN];
-    int tot , found , first;
+    int tot , found , first , done;
     char line_buffer[50];
     char filename[DATA_LEN];
 	int ret;
     char final;
 
-	printf("\nNella calculate Total:\nData iniziale:%s\nData Finale:%s\n" , data_iniziale , data_finale);
+	//printf("\nNella calculate Total:\nData iniziale:%s\nData Finale:%s\n" , data_iniziale , data_finale);
 
     memset(line_buffer , 0 , 50);
 
@@ -355,13 +362,15 @@ void calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN]){
 
     if(file_data == NULL){
         printf("Impossibile aprire il file\n");
-        return;
+        return -1;
     }
 
-    found = 0;
-    tot = 0;
+    found = 0; // flag che indica se ho trovato o no la prima data
     first = 1;
     final = 0;
+    done  = 0;
+    tot = 0;
+    today_aggr = 0;
     /*
         Scorro il file, leggo la data, 
             se minore della data iniziale -> vado avanti
@@ -369,13 +378,13 @@ void calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN]){
             ogni data viene confrontata con quella finale
     */
 
-    while(fgets(line_buffer , 50 , file_data) && !(found)){
+    while(fgets(line_buffer , 50 , file_data) && !(done)){
 
         // mantengo in prec_date la data prima di quella che stiamo analizzando 
         strcpy(prec_date , current_date);
         sscanf(line_buffer , "%s %d %d %c" , current_date , &tamponi , &casi , &final);
 
-		printf("Sto analizzando la data:%s\n" , current_date);
+		//printf("Sto analizzando la data:%s\n" , current_date);
 
         // sto cercando ancora la prima, quindi non calcolo i dati aggregati
         if(!found){
@@ -391,22 +400,40 @@ void calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN]){
 		    ret = compareDates(current_date , data_iniziale);
 		   
 		    if(ret == 0){
-			    printf("Sono arrivato alla data iniziale, inizio l'aggregazione\n");
+			    printf("inizio l'aggregazione\n");
 	            found = 1;
+                first = 1;
 		    }
 		    printf("\n");
         }
 
         if(found){ // trovato la prima data quindi conto
-            today_aggr = (strcmp(aggr_type , "TAMPONE") == 0) ? tamponi : casi;
+            today_aggr = (strcmp(util_type , "TAMPONE") == 0) ? tamponi : casi;
+
             if(final != 'F'){
-                askToPeer(current_date);
+                askToPeer(current_date , &tot);
+            }else{
+                tot += today_aggr;
             }
+
+            //printf("first:%d\naggr_type:%s\n" , first , aggr_type);
+
+            if(!first && strcmp(util_aggr_type , "VARIAZIONE") == 0){
+                printf("%s %s: %d\n" ,  current_date , prec_date , (today_aggr - yesterday_aggr));
+            }
+
+            first = 0;
+            
         }
+
+        if(compareDates(current_date , data_finale) == 0) done = 1;
+
+        
 
     }
 
-    printf("FINE CALCULATE\n" );
+    //printf("FINE CALCULATE\n" );
+    return tot;
 }
 
 
@@ -494,7 +521,7 @@ void readFromFile(char* date, int *tamponi , int* casi , char* def){
 
         // data richiesta
         if(compareDates(date , temp_data) == 0){
-            printf("trovata la data richiesta\n");
+            //printf("trovata la data richiesta\n");
             return;
         }
     }

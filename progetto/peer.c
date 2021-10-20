@@ -78,8 +78,8 @@ int num_response;
 int today_aggr;
 int yesterday_aggr;
 int today_flag; // settata a 1 quando troviamo il def  
-char aggr_type[AGGR_LEN];
-
+char util_aggr_type[AGGR_LEN]; // TOTALE VARIAZIONE
+char util_type[AGGR_LEN]; //TAMPONCE , CASO
 
 //DEBUG
 char comando[MAX_COMMAND_LEN];
@@ -216,6 +216,7 @@ int main(int argc , char** argv){
                 char data_iniziale[DATE_LEN];
                 char data_finale[DATE_LEN];
                 int ret;
+                int tot;
 
                 //printf("\nValore di stdin_buffer->%s\n\n" , stdin_buffer);
                 //printf("Data iniziale-> %s\n"  , data_iniziale);
@@ -243,6 +244,18 @@ int main(int argc , char** argv){
                     continue;
                 }
 
+                if(strcmp(data_iniziale , "*") == 0 || ret == 3){
+                    //printf("NBel controllo ep[r la ret 3\n");
+                    sprintf(data_iniziale , "%d:%d:%d" , START_DAY , START_MONTH , START_YEAR);
+                }
+
+                if(strcmp(data_finale , "*") == 0 || ret == 3){
+                    //printf("NBel controllo ep[r la ret 3\n");
+                    //printf("\n\nPrima della final date:\nDataIniziale:%s\nDataFinale:%s\n\n" ,  data_iniziale , data_finale);
+                    getFinalDate(data_finale);
+                    //printf("\n\nDOPO della final date:\nDataIniziale:%s\nDataFinale:%s\n\n" ,  data_iniziale , data_finale);
+                }
+
                 ret = checkDates(data_iniziale , data_finale , tipo_aggr);
                 printf("Dopo la checkdate()\nret--> %d\n" , ret);
 
@@ -252,27 +265,17 @@ int main(int argc , char** argv){
                     printf("Date non valide\n");
                 }
 
-                //printf("Dopo la checkDates:\nDataIniziale:%s\nDataFinale:%s\n" ,  data_iniziale , data_finale);
-
-
-                if(strcmp(data_iniziale , "*") == 0){
-                    sprintf(data_iniziale , "%d:%d:%d" , START_DAY , START_MONTH , START_YEAR);
-                }
-
-                if(strcmp(data_finale , "*") == 0){
-                    //printf("\n\nPrima della final date:\nDataIniziale:%s\nDataFinale:%s\n\n" ,  data_iniziale , data_finale);
-                    getFinalDate(data_finale);
-                    //printf("\n\nDOPO della final date:\nDataIniziale:%s\nDataFinale:%s\n\n" ,  data_iniziale , data_finale);
-                }
-
                 printf("Prima della calculate total:\nDataIniziale:%s\nDataFinale:%s\n" ,  data_iniziale , data_finale);
 
-                strcpy(aggr_type , tipo);
-                printf("aggr_type--> %s\n" , aggr_type);
+                strcpy(util_type , tipo);
+                strcpy(util_aggr_type , tipo_aggr);
+
+                tot = calculateTotal(data_iniziale , data_finale );
 
                 if(strcmp(tipo_aggr , "TOTALE") == 0){
-                    calculateTotal(data_iniziale , data_finale );
+                    printf("Aggregazione Terminata, %s %s:%d\n" , tipo , tipo_aggr , tot);
                 }
+
 
 
             }
