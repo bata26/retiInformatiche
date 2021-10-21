@@ -84,6 +84,10 @@ char util_type[AGGR_LEN]; //TAMPONCE , CASO
 //DEBUG
 char comando[MAX_COMMAND_LEN];
 
+// flag per accettazione dati
+int data_flag;
+int mutex_flag;
+
 int main(int argc , char** argv){
 
     //inizializzo i set
@@ -115,6 +119,8 @@ int main(int argc , char** argv){
 
     last_flood_request_id = 0;
 
+    data_flag = 1;
+
     while(1){
 
         // la select sposta da read_fds, in questo modo il set master
@@ -132,6 +138,11 @@ int main(int argc , char** argv){
             fgets(stdin_buffer , MAX_STDIN_LEN , stdin);
             sscanf(stdin_buffer, "%s", command);
             printf("Ricevuto il comando %s\n" , command);
+
+            if(!data_flag){
+                printf("Impossibile eseguire operazioni fino alla chiusura dei register, riprovare piu' tardi\n");
+                continue;
+            }
 
             // start
             if(strcmp(command , "start") == 0){
@@ -161,6 +172,23 @@ int main(int argc , char** argv){
                     continue;
                 }
 
+                if(mutex_flag){
+                    printf("Non posso disconnettermi in quanto c'e' una get in corso\n");
+                    continue;
+                }
+
+                send_pkt(listen_socket , "CAN_I_LV" ,HEADER_LEN , server_port , "ACK_U_LV");
+                recv_pkt(listen_socket , server_buffer , MAX_STDIN_LEN , server_port , "U_CAN_LV" , "ACK_I_LV");
+
+                sscanf(server_buffer , "%s %d" , command , &mutex_flag);
+
+                printf("Mutex_Flag-->%d\n" , mutex_flag);
+
+                if(mutex_flag){
+                    printf("Non posso discnnettermi al momento..\n");
+                    continue;
+                }
+
                 printf("Invio al DS la richiesta di disconnessione\n");
                 send_pkt(listen_socket , "CONN_STP" , HEADER_LEN , server_port, "STOP_ACK");
                 printf("Disconnessione avvenuta con successo!\n");
@@ -187,6 +215,12 @@ int main(int argc , char** argv){
                 enum dataType type;
                 int value;
                 char tipo[MAX_COMMAND_LEN];
+
+                if(!connected){
+                    printf("Impossibile inserire dati finche' il peer non e' connesso\n");
+                    continue;
+                }
+
 
                 printf("Inserisco i nuovi dati..\n");
 
@@ -218,12 +252,33 @@ int main(int argc , char** argv){
                 int ret;
                 int tot;
 
-                //printf("\nValore di stdin_buffer->%s\n\n" , stdin_buffer);
-                //printf("Data iniziale-> %s\n"  , data_iniziale);
+
+                
+
+                if(!connected){
+                    printf("Impossibile richiedere dati finche' il peer non e' connesso\n");
+                    continue;
+                }
+
+
+                // come prima cosa richiedo al manager il mutex sul canale per le get
+                printf("Richiedo la mutex al manager\n");
+                send_pkt(listen_socket , "MUTX_GET" , HEADER_LEN  , manager_port , "MUTX_ACK");
+                recv_pkt(listen_socket , manager_buffer , MAX_STDIN_LEN , manager_port , "MUTX_VAL" , "MUTX_ACQ");
+
+                sscanf(manager_buffer , "%s %d" , command , &mutex_flag );
+
+                if(mutex_flag == 1){
+                    printf("Impossibile ottenre il mutex\n");
+                    continue;
+                }
+
+                if(my_port == 5001) sleep(5);
+
 
                 ret = sscanf(stdin_buffer , "%s %s %s %s %s" , command , tipo_aggr , tipo , data_iniziale , data_finale);
 
-                printf("\nAppena inseriti:\nTipo_aggr->%s\nTipo->%s\nDataIniziale->%s\nDataFinale->%s\n" , tipo_aggr , tipo , data_iniziale , data_finale);
+                //printf("\nAppena inseriti:\nTipo_aggr->%s\nTipo->%s\nDataIniziale->%s\nDataFinale->%s\n" , tipo_aggr , tipo , data_iniziale , data_finale);
 
                 /*
                     CASI:
@@ -259,11 +314,13 @@ int main(int argc , char** argv){
                 ret = checkDates(data_iniziale , data_finale , tipo_aggr);
                 printf("Dopo la checkdate()\nret--> %d\n" , ret);
 
-                if(ret){
-                    printf("Date valide!!\n\n");
-                }else{
-                    printf("Date non valide\n");
+                if(!ret){
+                    printf("Date non valide\n\n");
+                    continue;
                 }
+                
+                printf("Date valide\n");
+                
 
                 printf("Prima della calculate total:\nDataIniziale:%s\nDataFinale:%s\n" ,  data_iniziale , data_finale);
 
@@ -275,6 +332,8 @@ int main(int argc , char** argv){
                 if(strcmp(tipo_aggr , "TOTALE") == 0){
                     printf("Aggregazione Terminata, %s %s:%d\n" , tipo , tipo_aggr , tot);
                 }
+
+                send_pkt(listen_socket , "MUTX_LEA" , HEADER_LEN , manager_port , "MTX_LEAK");
 
 
 
@@ -357,6 +416,7 @@ int main(int argc , char** argv){
                     send_pkt(listen_socket , manager_buffer , buf_len , manager_port , "MDAY_ACK");
 
                     printf("Dati inviati\n");
+
                 }
 
                 else if(strcmp(msg_type , "DAY_DATA") == 0){
@@ -371,7 +431,15 @@ int main(int argc , char** argv){
                     writeOnFile(peer_data , my_port , 'F');
 
                     printf("Salvataggio avvenuto con successo\n");
+
+                    data_flag = 1;
                     
+                }
+
+                else if(strcmp(msg_type , "BLCK_ADD") == 0){
+                    printf("Blocco l'inserito e la ricerca di dati finche' il manager non chiude i register odierni\n");
+                    data_flag = 0;
+                    send_ACK(listen_socket , "BLCK_ACK" , manager_port);
                 }
             }
 

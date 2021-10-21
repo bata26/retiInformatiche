@@ -69,6 +69,8 @@ int day_close; // giorno in cui il server ha chiuso
 // struttura oer la gestione dei dati
 struct datiSalvati dati_giornalieri[DATA_LEN];
 
+// mutex per le get
+int mutex_flag; // 1 quando qualcuno sta gestendo una get
 
 // id delle request per flooding
 int flood_id;
@@ -205,6 +207,32 @@ int main(int argc , char** argv){
 
             }
 
+            else if(strcmp(request_received , "MUTX_GET") == 0){
+                int buf_len;
+
+                send_ACK(listen_socket , "MUTX_ACK" , sender_port);
+                // mando al peer iol valore di mutex, quindi se invio 1 il peer non puo ottenere il mutex
+
+                buf_len = sprintf(manager_buffer , "%s %d" , "MUTX_VAL" , mutex_flag);
+                
+                send_pkt(listen_socket , manager_buffer , buf_len , sender_port , "MUTX_ACQ");
+
+                if(!mutex_flag){
+                    mutex_flag = 1; 
+                    send_pkt(listen_socket , "MUTX_LCK" , HEADER_LEN , server_port , "MTX_LACK");
+                }
+
+            }
+
+            else if(strcmp(request_received , "MUTX_LEA") == 0){
+                send_ACK(listen_socket , "MTX_LEAK" , sender_port);
+                
+                if(mutex_flag){
+                    mutex_flag = 0;
+                    send_pkt(listen_socket , "MTX_ULCK" , HEADER_LEN , server_port , "MTX_LUCK");
+                } 
+            }
+
         }
 
         // stdin
@@ -215,10 +243,18 @@ int main(int argc , char** argv){
             sscanf(manager_buffer , "%s" , command);
 
             if(strcmp(command , "close") == 0){
+                int i;
+                for(i = 0 ; i < NUM_PEER ; i++){
+                    if(peer[i] == 0) continue;
+
+                    send_pkt(listen_socket , "BLCK_ADD" , HEADER_LEN , peer[i] , "BLCK_ACK");
+                }
+            }
+            
+            else if(strcmp(command , "closereg") == 0){
                 closeRegister();
             }
-
-            printf("DATI RACCOLI:\nTAMPONI: %d\nCASI:%d\n" , dati_giornalieri[TAMPONE_IND].value , dati_giornalieri[CASO_IND].value);
+            //printf("DATI RACCOLI:\nTAMPONI: %d\nCASI:%d\n" , dati_giornalieri[TAMPONE_IND].value , dati_giornalieri[CASO_IND].value);
         }
 
         //GESTIONE DEL TEMPO
@@ -235,11 +271,22 @@ int main(int argc , char** argv){
         current_hour = timeinfo->tm_hour;
 
         //printf("Current_day -> %d \nCurrent_hour->%d\nCurrent_min->%d\n" , current_day , current_hour , current_min);
+        // se sono le 17 e i minuti sono compresi tra le 51 e 55 
+        if(current_hour == 17){
+            if(current_min >= 56){
+                printf("Avvio chiusura dei register..\n");
+                closeRegister();
+                printf("Chiusura terminata, dati salvati\n");
+            }else if(current_min >= 51 && current_min <= 55){
+                int i;
 
-        if(current_hour == 17 && current_min > 56){
-            printf("Avvio chiusura dei register..\n");
-            closeRegister();
-            printf("Chiusura terminata, dati salvati\n");
+                printf("Blocco i peer cosi da non accettare dati finche non chiudo i register\n");
+                for(i = 0 ; i < NUM_PEER ; i++){
+                    if(peer[i] == 0) continue;
+
+                    send_pkt(listen_socket , "BLCK_ADD" , HEADER_LEN , peer[i] , "BLCK_ACK");
+                }
+            }
         }
 
         

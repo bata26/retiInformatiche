@@ -189,7 +189,7 @@ void stampaNeighbors(int neighbors[][NUM_NEIGHBORS] , int peer , int* peer_list)
                 printf("%d) %d\n" , (j+1) , neighbors[i][j]);
             }
         }
-    }else if(peer != 0 && peer > 5001 && peer < 5005){
+    }else if(peer != 0 && peer >= 5001 && peer <= 5005){
         printf("PEER -> %d:\n" , peer);
         printf("1) %d\n" , neighbors[getPeerIndex(peer)][0]);
         printf("2) %d\n" , neighbors[getPeerIndex(peer)][1]);

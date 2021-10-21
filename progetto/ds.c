@@ -46,6 +46,9 @@ int neighbors[NUM_PEER][NUM_NEIGHBORS];
 int i , j;
 
 
+// mutex
+int mutex_flag;
+
 // buffer e buf_len
 char buffer[MAX_LIST_LEN];
 int buf_len;
@@ -260,6 +263,23 @@ int main(int argc , char** argv){
                 
                 manager_connected = 1;
             }    
+
+            else if(strcmp(request_received , "MUTX_LCK") == 0){
+                send_ACK(listen_socket , "MTX_LACK" , manager_port);
+                mutex_flag = 1;
+            }
+
+            else if(strcmp(request_received , "MTX_ULCK") == 0){
+                send_ACK(listen_socket , "MTX_LUCK" , manager_port);
+                mutex_flag = 0;
+            }
+
+            else if(strcmp(request_received , "CAN_I_LV") == 0){
+                send_ACK(listen_socket , "ACK_U_LV" , sender_port);
+                
+                buf_len = sprintf(buffer , "%s %d" , "U_CAN_LV" , mutex_flag);
+                send_pkt(listen_socket , buffer , buf_len , sender_port , "ACK_I_LV");
+            }
 
         }
     }

@@ -5,7 +5,8 @@ NBR_LIST        LIST_ACK // il DS invia la prima lista di neighbors al peer
 NBR_UPDT        UPDT_ACK // il DS invia una nuova lista di neighbors al peer
 CONN_STP        STOP_ACK // il peer richiede la disconnessione dal DS
 MNG_PORT        MNG_ACKP // il DS invia il numero di porta del manager al peerd
-
+CAN_I_LV        ACK_U_LV // il peer richiede il permesso di disconnettersi(negato se mutex e' attivo)
+U_CAN_LV        ACK_I_LV // il DS invia al peer se puo' andare o no
 
 // tra server DS e server manager
 
@@ -13,6 +14,8 @@ MNG_CONN        MNG_ACK // il manager chiede la connessione al DS
 REMV_LST        REMV_ACK // il DS invia al manager la porta di un peer che si è disconnesso
 UPDT_LST        MUPD_ACK // il DS invia al manager la porta in un peer che is è conneso
 DS_LEAVE        DS_LEACK // il DS ha ricevuto il comando esc e chiede al manager di chiudere i register
+MUTX_LCK        MTX_LACK // il manager avverte il DS che e' stat ottenuta la mutex
+MTX_ULCK        MTX_LUCK // il manager "sblocca" il mutex
 
 
 // tra server manager e peer
@@ -21,6 +24,10 @@ TDAY_AGG        MDAY_ACK // il peer manda al manager i dati aggregati del giorno
 DAY_DATA        DATA_ACK // il manager manda al peer i dati del giorno e il peer manda ack
 TOT_PEER        PEER_ACK // il peer chiede al manager quanti altri peer sono attualmente connessi
 PEER_LST        PLST_ACK // il manager manda il pacchetto contenente il numero di peer attualmente connessi
+BLCK_ADD        BLCK_ACK // il manager manda al peer il pacchetto per bloccare i dait in ingresso in quanto sta chiudendo i register
+MUTX_GET        MUTX_ACK // il peer chiede al manager il permesso di gestire una get, impedisce agli altri di gestire get e
+MUTX_VAL        MUTX_ACQ // il manager manda il permesso di ottenere la mutex
+MUTX_LEA        MTX_LEAK // il peer rilascia il mutex
 
 // tra peer e peer
 REQ_ENTR        ENTR_ACK // il peer richiede dati ai suoi vicini

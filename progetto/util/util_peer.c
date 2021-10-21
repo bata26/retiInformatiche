@@ -175,12 +175,12 @@ void stampaComandi(int port){
     printf("3) get aggr type period -> Mostra Un resoconto aggregato aggr del dato type nel periodo period specificato \n");
     printf("4) stop -> Chiude la connessione con il DS\n");
 
-    printf("Stampo roba per debvug extern:\n");
-    printf("my_port:%d\n" , my_port);
-    printf("neighbors[0]:%d\n" , neighbors[0]);
-    printf("neighbors[1]:%d\n" , neighbors[1]);
-    printf("manager_port:%d\n" , manager_port);
-    printf("listen_socket:%d\n", listen_socket);
+    //printf("Stampo roba per debvug extern:\n");
+    //printf("my_port:%d\n" , my_port);
+    //printf("neighbors[0]:%d\n" , neighbors[0]);
+    //printf("neighbors[1]:%d\n" , neighbors[1]);
+    //printf("manager_port:%d\n" , manager_port);
+    //printf("listen_socket:%d\n", listen_socket);
 }
 
 int allPeer(){
@@ -414,11 +414,12 @@ int calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN]){
     FILE * file_data;
     int tamponi , casi;
     char prec_date[DATE_LEN] , current_date[DATE_LEN];
-    int tot , found , first , done;
+    int tot , found , first , done , all_final;
     char line_buffer[50];
     char filename[DATA_LEN];
 	int ret;
     char final;
+    int yesterday_flag;
 
 	//printf("\nNella calculate Total:\nData iniziale:%s\nData Finale:%s\n" , data_iniziale , data_finale);
 
@@ -446,6 +447,8 @@ int calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN]){
             se la data iniziale e' la prima data del sistema, controllo che non sia maggiore di quella corrente
             ogni data viene confrontata con quella finale
     */
+
+   all_final = 1;
 
     while(fgets(line_buffer , 50 , file_data) && !(done)){
 
@@ -478,18 +481,27 @@ int calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN]){
 
         if(found){ // trovato la prima data quindi conto
             yesterday_aggr = today_aggr;
+            yesterday_flag = today_flag;
+
             today_aggr = (strcmp(util_type , "TAMPONE") == 0) ? tamponi : casi;
 
             if(final != 'F'){
                 askToPeer(current_date , &tot);
             }else{
                 tot += today_aggr;
+                today_flag = 1;
+            }
+
+            if(today_flag == 0){
+                all_final = 0;
             }
 
 
             if(!first && strcmp(util_aggr_type , "VARIAZIONE") == 0){
                 //printf("today_aggr->%d\nyesterday_aggr->%d\n" , today_aggr , yesterday_aggr);
-                printf("%s %s: %d\n" ,  current_date , prec_date , (today_aggr - yesterday_aggr));
+                printf("%s %s: %d" ,  current_date , prec_date , (today_aggr - yesterday_aggr));
+                if(!today_flag || !yesterday_flag) printf(" *");
+                printf("\n");
             }
 
             first = 0;
@@ -502,7 +514,7 @@ int calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN]){
 
     }
 
-    //printf("FINE CALCULATE\n" );
+    if(!all_final) printf("\n\nN.B. Il dato calcolato potrebbe non essere corretto in quanto non riesco ad avere informazioni certe per tutte le date inserite\n\n\n");
     return tot;
 }
 
@@ -524,7 +536,28 @@ int calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN]){
 // ritorna la data finale, questa coincide con il giorno corrente se sono passate le 18,
 // con il giorno precedente se non sono passate
 void getFinalDate(char date[DATE_LEN]){
-    time_t t;
+    FILE * file_data;
+    char filename[FILE_LEN];
+    char temp_date[DATE_LEN];
+    char line_buffer[50];
+
+
+    sprintf(filename , "%s%d%s" , FILE_PATH , my_port , ".txt");
+
+    file_data = fopen(filename , "r");
+
+    if(file_data == NULL){
+        printf("Impossibile aprire il file\n");
+        strcpy("" , date);
+        return;
+    }
+
+    while(fgets(line_buffer , 50 , file_data)){
+        sscanf(line_buffer , "%s" , date);
+    }
+
+    
+    /*time_t t;
     struct tm* timeinfo;
     int day , year , month;
 
@@ -562,7 +595,7 @@ void getFinalDate(char date[DATE_LEN]){
 		//printf("\nDAY:%d\nMONTH:%d\nYEAR:%d\n\n" , day , month , year);
     }else{
         sprintf(date , "%d:%d:%d" , timeinfo->tm_mday , timeinfo->tm_mon + 1 , timeinfo->tm_year + 1900);
-    }
+    }*/
 }
 
 
