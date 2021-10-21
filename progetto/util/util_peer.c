@@ -34,6 +34,42 @@ char header[HEADER_LEN];
 int connected_peer;
 
 
+/*
+	Return Value:
+	1) 0 -> Le due date sono uguali
+	2) 1 -> first_date e' PRECEDENTE a last_date
+	3) 2 -> last_date e' PRECEDENTE a first_date
+*/
+
+int compareDates(char first_date[DATE_LEN] , char last_date[DATE_LEN]){
+	int num_first_date[3];
+	int num_last_date[3];
+
+	sscanf(first_date , "%d:%d:%d" , &num_first_date[0] , &num_first_date[1] , &num_first_date[2]);
+	sscanf(last_date , "%d:%d:%d" , &num_last_date[0] , &num_last_date[1] , &num_last_date[2]);
+
+	//printf("FIRST DATE:\ngiorno-> %d\nmese->%d\nanno->%d\n" , num_first_date[0] , num_first_date[1] , num_first_date[2]);
+	//printf("LAST DATE:\ngiorno-> %d\nmese->%d\nanno->%d\n" , num_last_date[0] , num_last_date[1] , num_last_date[2]);
+
+	// uguali
+	if( ( num_first_date[0] ==  num_last_date[0]) && (num_first_date[1] ==  num_last_date[1]) && (num_first_date[2] ==  num_last_date[2])) return 0;
+
+	// casi in cui first precedente last:
+	// anno di last > anno di first
+	// stesso anno ma mese maggiore
+	// stesso anno stesso mese giorno maggiore
+
+	if(   (num_last_date[2] > num_first_date[2]) ||
+		( (num_last_date[2] == num_first_date[2]) && (num_last_date[1] > num_first_date[1]) ) ||
+		( (num_last_date[2] == num_first_date[2]) && (num_last_date[1] == num_first_date[1]) && (num_last_date[0] > num_first_date[0]) ) 
+	){
+		return 1;
+	}
+
+	return 2;
+	
+}
+
 void updateFile(char * buffer){
     /*
     Struttura del buffer:
@@ -58,7 +94,7 @@ void updateFile(char * buffer){
 
 
     sprintf(filename , "%s%d%s" ,  FILE_PATH , my_port , ".txt");
-    sprintf(new_filename , "%s%s%d%s" ,  "new_" , FILE_PATH , my_port , ".txt");
+    sprintf(new_filename , "%s%s%d%s" ,  FILE_PATH ,"new_" ,  my_port , ".txt");
 
     src = fopen(filename , "r");
     dest = fopen(new_filename , "w");
@@ -83,14 +119,16 @@ void updateFile(char * buffer){
         }
     }
 
+    
+
+    fclose(src);
+    fclose(dest);
+
     if(remove(filename) == 0){
         if(rename(new_filename , filename) == 0){
             printf("Aggiornamento Riuscito con successo!\n");
         }
     }
-
-    fclose(src);
-    fclose(dest);
 }
 
 void cleanNeighbors(int * neighbors){
@@ -116,9 +154,16 @@ void getAggregateValue(char * buffer){
     if(def == 'F'){
         today_aggr = res;
         today_flag = 1;
+
+
+        // se dopo aver chiesto, sono riuscito a trovare il dato finale, aggiorno
+        // il mio file cosi da poter evitare il prossimo flooding
+        updateFile(buffer);
     }else{
         today_aggr += res;
     }
+
+    //printf("DATE:%s\ntoday_aggr->%d\n" , date , today_aggr);
 }
 
 
@@ -362,41 +407,7 @@ int checkDates(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN] , char 
     return 0;
 }
 
-/*
-	Return Value:
-	1) 0 -> Le due date sono uguali
-	2) 1 -> first_date e' PRECEDENTE a last_date
-	3) 2 -> last_date e' PRECEDENTE a first_date
-*/
 
-int compareDates(char first_date[DATE_LEN] , char last_date[DATE_LEN]){
-	int num_first_date[3];
-	int num_last_date[3];
-
-	sscanf(first_date , "%d:%d:%d" , &num_first_date[0] , &num_first_date[1] , &num_first_date[2]);
-	sscanf(last_date , "%d:%d:%d" , &num_last_date[0] , &num_last_date[1] , &num_last_date[2]);
-
-	//printf("FIRST DATE:\ngiorno-> %d\nmese->%d\nanno->%d\n" , num_first_date[0] , num_first_date[1] , num_first_date[2]);
-	//printf("LAST DATE:\ngiorno-> %d\nmese->%d\nanno->%d\n" , num_last_date[0] , num_last_date[1] , num_last_date[2]);
-
-	// uguali
-	if( ( num_first_date[0] ==  num_last_date[0]) && (num_first_date[1] ==  num_last_date[1]) && (num_first_date[2] ==  num_last_date[2])) return 0;
-
-	// casi in cui first precedente last:
-	// anno di last > anno di first
-	// stesso anno ma mese maggiore
-	// stesso anno stesso mese giorno maggiore
-
-	if(   (num_last_date[2] > num_first_date[2]) ||
-		( (num_last_date[2] == num_first_date[2]) && (num_last_date[1] > num_first_date[1]) ) ||
-		( (num_last_date[2] == num_first_date[2]) && (num_last_date[1] == num_first_date[1]) && (num_last_date[0] > num_first_date[0]) ) 
-	){
-		return 1;
-	}
-
-	return 2;
-	
-}
 
 
 int calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN]){
@@ -475,9 +486,9 @@ int calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN]){
                 tot += today_aggr;
             }
 
-            //printf("first:%d\naggr_type:%s\n" , first , aggr_type);
 
             if(!first && strcmp(util_aggr_type , "VARIAZIONE") == 0){
+                //printf("today_aggr->%d\nyesterday_aggr->%d\n" , today_aggr , yesterday_aggr);
                 printf("%s %s: %d\n" ,  current_date , prec_date , (today_aggr - yesterday_aggr));
             }
 
