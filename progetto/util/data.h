@@ -9,4 +9,3 @@ struct datiSalvati{
 };
 
 void setupData(struct datiSalvati usr_data[DATA_LEN]);
-void writeOnFile(struct datiSalvati usr_data[DATA_LEN] , int  , char);

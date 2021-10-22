@@ -9,8 +9,7 @@ void getFinalDate(char*);
 int compareDates(char*, char*);
 void readFromFile(char* , int*, int* , char*);
 void setupForFlooding();
-int checkDataReceived(int port);
-void getAggregateValue(char * buffer);
+int checkDataReceived(int );
+void getAggregateValue(char * );
 int allPeer();
-
-
+void writeOnFile( char);

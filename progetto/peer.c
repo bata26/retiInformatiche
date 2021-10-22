@@ -202,7 +202,7 @@ int main(int argc , char** argv){
                 send_pkt(listen_socket , manager_buffer , buf_len , manager_port , "MDAY_ACK");
                 printf("Dati inviati.\n");
 
-                writeOnFile(peer_data , my_port , 'N');
+                writeOnFile('N');
 
 
                 FD_CLR(0 , &read_fds);
@@ -421,7 +421,7 @@ int main(int argc , char** argv){
 
                     printf("I dati del giorno sono:\nTAMPONI:%d\nCASI:%d\nSalvo i dati ricevuti..\n" , peer_data[TAMPONE_IND].value , peer_data[CASO_IND].value);
 
-                    writeOnFile(peer_data , my_port , 'F');
+                    writeOnFile('F');
 
                     printf("Salvataggio avvenuto con successo\n");
 

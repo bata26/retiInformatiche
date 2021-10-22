@@ -21,7 +21,7 @@ void setupData( struct datiSalvati usr_data[DATA_LEN]){
     usr_data[0].value = 0;
     usr_data[1].value = 0;
 }
-
+/*
 void writeOnFile(struct datiSalvati usr_data[DATA_LEN] , int port , char def){
     FILE * file_data;
     char filename[DATA_LEN];
@@ -49,4 +49,4 @@ void writeOnFile(struct datiSalvati usr_data[DATA_LEN] , int port , char def){
 
     usr_data[TAMPONE_IND].value = 0;
     usr_data[CASO_IND].value = 0;
-}
+}*/

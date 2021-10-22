@@ -12,6 +12,7 @@
 
 #include "connection.h"
 #include "costanti.h"
+#include "data.h"
 
 
 
@@ -33,6 +34,37 @@ char header[HEADER_LEN];
 
 int connected_peer;
 
+extern struct  datiSalvati peer_data[DATA_LEN];
+
+
+void writeOnFile(char def){
+    FILE * file_data;
+    char filename[DATA_LEN];
+    time_t t;
+    struct tm * timeinfo;
+
+    time(&t);
+    timeinfo = localtime(&t);
+
+    //printf("Info:\nanno:%d\nmese:%d\ngiorno:%d\n" ,timeinfo->tm_year+1900 , timeinfo->tm_mon+1 , timeinfo->tm_mday );
+    
+    sprintf(filename , "%s%d%s" , FILE_PATH , my_port , ".txt");
+    
+    file_data = fopen(filename , "a");
+
+    if(file_data == NULL){
+        printf("Problemi con il file, riprovare..\n");
+        return;
+    }
+    
+    
+    fprintf(file_data , "%d:%d:%d %d %d %c\n" ,  timeinfo->tm_mday  , timeinfo->tm_mon+1 , timeinfo->tm_year+1900 ,  peer_data[TAMPONE_IND].value , peer_data[CASO_IND].value , def);
+
+    fclose(file_data);
+
+    peer_data[TAMPONE_IND].value = 0;
+    peer_data[CASO_IND].value = 0;
+}
 
 /*
 	Return Value:
