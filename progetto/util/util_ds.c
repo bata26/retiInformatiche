@@ -42,7 +42,7 @@ void findNextNeighbor(int direction, int index){
 
 // prende in input una porta e modifica la struttra neighbors con i nuovi vicini di quel peer
 void getNeighbors(int *updated){
-    int i, temp_first_neig , temp_second_neig , index;
+    int i, temp_first_neig , temp_second_neig ;
 
     if(num_peer == 1){
         printf("un solo peer connesso, nessun vicino disponibile\n");
@@ -75,8 +75,6 @@ void getNeighbors(int *updated){
             se i nuovi vicini sono diversi da quelli precedenti, mando un pacchetto di aggiornamento
     */
     for(i = 0 ; i < NUM_PEER ; i++){
-        int found , temp_index;
-
         if(peer[i] == 0) continue;
 
         temp_first_neig = neighbors[i][0];

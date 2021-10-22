@@ -230,7 +230,6 @@ void setupForFlooding(){
 
 */
 void askToPeer(char date[DATE_LEN] , int* tot){
-    int  i; // to_flood indica se bisgona eseguire il flooding o no, se ad esempio connected_peer e' 3 il sender ha gia tra i suoi neighbor tutti i peer connessi
     char receiver_buffer[MAX_STDIN_LEN];
 
     //printf("Chiedo ai miei vicini informazioni sulla data: %s\n" , date );
@@ -538,7 +537,6 @@ int calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN]){
 void getFinalDate(char date[DATE_LEN]){
     FILE * file_data;
     char filename[FILE_LEN];
-    char temp_date[DATE_LEN];
     char line_buffer[50];
 
 
