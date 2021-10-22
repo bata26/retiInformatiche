@@ -10,6 +10,10 @@
 #define RECEIVED_LEN 9
 // lunghezza ACK
 #define ACK_LEN 9
+// lunghezza "standard" di un pacchetto
+#define STANDARD_LEN 100
+// lunghezza di una riga di ogni file
+#define FILE_LINE_LEN 50
 
 // comandi client
 #define CLIENT_GET_COMMAND "get"

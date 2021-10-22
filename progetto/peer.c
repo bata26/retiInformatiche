@@ -38,11 +38,13 @@ socklen_t listen_addr_len;
 //buffer per i comandi da stdin
 char stdin_buffer[MAX_STDIN_LEN];
 // buffer per i comandi da server
-char server_buffer[MAX_PKT_LEN];
+char server_buffer[STANDARD_LEN];
 // buffer per i comandi da manager
-char manager_buffer[MAX_STDIN_LEN];
+char manager_buffer[STANDARD_LEN];
 // buffer per altri peer
-char peer_buffer[MAX_STDIN_LEN];
+char peer_buffer[STANDARD_LEN];
+// buffer per le richieste ricevute sul socket
+char request_buffer[STANDARD_LEN];
 
 //set per gestire socket e stdin
 fd_set master;
@@ -178,14 +180,15 @@ int main(int argc , char** argv){
                 }
 
                 send_pkt(listen_socket , "CAN_I_LV" ,HEADER_LEN , server_port , "ACK_U_LV");
-                recv_pkt(listen_socket , server_buffer , MAX_STDIN_LEN , server_port , "U_CAN_LV" , "ACK_I_LV");
+                memset(server_buffer ,0 , STANDARD_LEN);
+                recv_pkt(listen_socket , server_buffer , STANDARD_LEN , server_port , "U_CAN_LV" , "ACK_I_LV");
 
                 sscanf(server_buffer , "%s %d" , command , &mutex_flag);
 
                 printf("Mutex_Flag-->%d\n" , mutex_flag);
 
                 if(mutex_flag){
-                    printf("Non posso discnnettermi al momento..\n");
+                    printf("Non posso disconnettermi al momento..\n");
                     continue;
                 }
 
@@ -207,11 +210,7 @@ int main(int argc , char** argv){
             }
 
             // add
-            else if(strcmp(command , "add") == 0){
-                // cosa mi serve:
-                // -Tipo (TAMPONE  , NUOVO CASO)
-                // quantità
-                
+            else if(strcmp(command , "add") == 0){                
                 enum dataType type;
                 int value;
                 char tipo[MAX_COMMAND_LEN];
@@ -252,9 +251,6 @@ int main(int argc , char** argv){
                 int ret;
                 int tot;
 
-
-                
-
                 if(!connected){
                     printf("Impossibile richiedere dati finche' il peer non e' connesso\n");
                     continue;
@@ -262,18 +258,19 @@ int main(int argc , char** argv){
 
 
                 // come prima cosa richiedo al manager il mutex sul canale per le get
-                printf("Richiedo la mutex al manager\n");
+                printf("Richiedo la mutex al manager..\n");
                 send_pkt(listen_socket , "MUTX_GET" , HEADER_LEN  , manager_port , "MUTX_ACK");
-                recv_pkt(listen_socket , manager_buffer , MAX_STDIN_LEN , manager_port , "MUTX_VAL" , "MUTX_ACQ");
+                recv_pkt(listen_socket , manager_buffer , STANDARD_LEN , manager_port , "MUTX_VAL" , "MUTX_ACQ");
 
                 sscanf(manager_buffer , "%s %d" , command , &mutex_flag );
 
                 if(mutex_flag == 1){
-                    printf("Impossibile ottenre il mutex\n");
+                    printf("Impossibile ottenere il mutex\n");
                     continue;
                 }
 
-                if(my_port == 5001) sleep(5);
+                printf("Ottenuto il mutex per la get\n");
+                //if(my_port == 5001) sleep(5);
 
 
                 ret = sscanf(stdin_buffer , "%s %s %s %s %s" , command , tipo_aggr , tipo , data_iniziale , data_finale);
@@ -292,37 +289,33 @@ int main(int argc , char** argv){
                     - La variazione ha bisogno di due date distinte, mentre totale no
                 */
 
-                printf("Valore di ret dopo la scanf-> %d\n" , ret);
                 // numero errato di parametri
                 if(ret != 3 && ret != 5){
                     printf("I parametri inseriti non sono validi, riprovare..\n");
                     continue;
                 }
 
+                // setup data iniziale se non specificata
                 if(strcmp(data_iniziale , "*") == 0 || ret == 3){
-                    //printf("NBel controllo ep[r la ret 3\n");
                     sprintf(data_iniziale , "%d:%d:%d" , START_DAY , START_MONTH , START_YEAR);
-                }
+                }  
 
+                // setup data finale se non specificata
                 if(strcmp(data_finale , "*") == 0 || ret == 3){
-                    //printf("NBel controllo ep[r la ret 3\n");
-                    //printf("\n\nPrima della final date:\nDataIniziale:%s\nDataFinale:%s\n\n" ,  data_iniziale , data_finale);
                     getFinalDate(data_finale);
-                    //printf("\n\nDOPO della final date:\nDataIniziale:%s\nDataFinale:%s\n\n" ,  data_iniziale , data_finale);
                 }
 
                 ret = checkDates(data_iniziale , data_finale , tipo_aggr);
-                printf("Dopo la checkdate()\nret--> %d\n" , ret);
 
                 if(!ret){
                     printf("Date non valide\n\n");
                     continue;
                 }
                 
-                printf("Date valide\n");
+                //printf("Date valide\n");
                 
 
-                printf("Prima della calculate total:\nDataIniziale:%s\nDataFinale:%s\n" ,  data_iniziale , data_finale);
+                //printf("Prima della calculate total:\nDataIniziale:%s\nDataFinale:%s\n" ,  data_iniziale , data_finale);
 
                 strcpy(util_type , tipo);
                 strcpy(util_aggr_type , tipo_aggr);
@@ -334,8 +327,6 @@ int main(int argc , char** argv){
                 }
 
                 send_pkt(listen_socket , "MUTX_LEA" , HEADER_LEN , manager_port , "MTX_LEAK");
-
-
 
             }
 
@@ -353,15 +344,17 @@ int main(int argc , char** argv){
             int sender_port;
             char msg_type[MAX_COD_LEN+1];
 
-            memset(server_buffer , 0 , MAX_PKT_LEN);
+            memset(request_buffer , 0 , STANDARD_LEN);
 
-            sender_port = recv_send_pkt(listen_socket , server_buffer, MAX_PKT_LEN);
+            sender_port = recv_send_pkt(listen_socket , request_buffer, STANDARD_LEN);
 
             // ottengo il codice del pacchetto
-            sscanf(server_buffer , "%s" , msg_type);
+            sscanf(request_buffer , "%s" , msg_type);
             msg_type[MAX_COD_LEN] = '\0';
 
             if(sender_port == server_port){
+
+                strcpy(server_buffer , request_buffer);
                 
                 // LISTA DEI NEIGHBOR
                 if(strcmp(msg_type , "NBR_LIST") == 0){
@@ -404,7 +397,7 @@ int main(int argc , char** argv){
             // manager
             else if(sender_port == manager_port){
 
-                memset(manager_buffer , 0 , MAX_STDIN_LEN);
+                strcpy(manager_buffer , request_buffer);
 
                 if(strcmp(msg_type , "TDAY_CLS") == 0){
                     int buf_len;
@@ -423,7 +416,7 @@ int main(int argc , char** argv){
 
                     printf("Il manager mi ha inviato i dati aggregati relativi al giorno corrente\n");
 
-                    sscanf(server_buffer , "%s %d %d" , msg_type , &peer_data[TAMPONE_IND].value , &peer_data[CASO_IND].value);
+                    sscanf(manager_buffer , "%s %d %d" , msg_type , &peer_data[TAMPONE_IND].value , &peer_data[CASO_IND].value);
                     send_ACK(listen_socket ,"DATA_ACK" , sender_port);
 
                     printf("I dati del giorno sono:\nTAMPONI:%d\nCASI:%d\nSalvo i dati ricevuti..\n" , peer_data[TAMPONE_IND].value , peer_data[CASO_IND].value);
@@ -447,6 +440,8 @@ int main(int argc , char** argv){
             else{
                 memset(peer_buffer , 0 , MAX_STDIN_LEN);
 
+                strcpy(peer_buffer , request_buffer);
+
                 if(strcmp(msg_type , "REQ_ENTR") == 0){
                     /**
                      * devo:
@@ -458,80 +453,24 @@ int main(int argc , char** argv){
                     char def;
                     char date[DATE_LEN];
                     int flood_requester;
-                    char request_buffer[MAX_STDIN_LEN];
+                    //char request_buffer[MAX_STDIN_LEN];
 
                     send_ACK(listen_socket , "ENTR_ACK" , sender_port);
 
-                    sscanf(server_buffer , "%s %d %s %d %d" , msg_type ,&flood_requester , date , &request_id , &to_flood);
+                    sscanf(peer_buffer , "%s %d %s %d %d" , msg_type ,&flood_requester , date , &request_id , &to_flood);
 
                     printf("Preparo il pacchetto per il flood requester\n");
 
                     readFromFile(date , &tamponi , &casi , &def);
-                    sprintf(request_buffer , "%s %s %d %d %c" , "ENTR_DAT" , date , tamponi , casi , def);
-                    send_pkt(listen_socket , request_buffer , MAX_STDIN_LEN , flood_requester , "ENT_DACK");
+                    sprintf(peer_buffer , "%s %s %d %d %c" , "ENTR_DAT" , date , tamponi , casi , def);
+                    send_pkt(listen_socket , peer_buffer , STANDARD_LEN , flood_requester , "ENT_DACK");
 
                     //inoltro il pacchetto al mio vicino
                     if(neighbors[0] == -1 || neighbors[0] == flood_requester) continue;
 
-                    send_pkt(listen_socket ,server_buffer , MAX_STDIN_LEN , neighbors[0] , "ENTR_ACK");
-
-                    /*
-                    printf("LAST_REQ->%d\nCURRENT_REQ->%d\n" , last_flood_request_id , request_id);
-
-                    // richiesta gia gestita
-                    if(request_id == last_flood_request_id && served_flag != 0){
-                        printf("Ho gia' partecipato a questo flooding, interrompo\n");
-                        continue;
-                    }
-                    // aggiorno l'id dell'ultima request e segno nel flag che non ho inoltrato il pacchetto a nessuno
-                    last_flood_request_id = request_id;
-                    served_flag =  0;
-                    
-                    readFromFile(date , &tamponi , &casi , &def);
-
-                    printf("Ho letto dal file:\nCASI:%d\nTAMPONI:%d\nDEF:%c\n" , tamponi , casi , def);
-
-                    sprintf(request_buffer , "%s %s %d %d %c" , "ENTR_DAT" , date , tamponi , casi , def);
-                    printf("Invio al richidente i dati relativi alla data %s\n" , date);
-                    send_pkt(listen_socket , request_buffer , MAX_STDIN_LEN , flood_requester , "ENT_DACK");
-
-                    //continue;
-
-                    // dopo aver inviato i miei dati controllo se devo fare flooding o no
-
-                    if(def == 'F' || to_flood == 0){
-                        printf("Ho il dato definitivo\n");
-                    }else{
-
-                        int dest_port = 0;
-
-                         non devo inoltrare la richiesta ne al sender ne al requester*
-
-                        if(neighbors[0] != 0 && neighbors[0] != sender_port && neighbors[0] != flood_requester) dest_port = neighbors[0];
-                        if(neighbors[1] != 0 && neighbors[1] != sender_port && neighbors[1] != flood_requester) dest_port = neighbors[1];
-                        
-                        if(!dest_port)   continue;
-
-                        printf("Non ho il dato definitivo quindi inoltro il pacchetto di richiesta a %d\n" , dest_port);
-
-                        send_pkt(listen_socket , server_buffer , MAX_STDIN_LEN , dest_port , "ENTR_ACK");
-                    }         
-
-                    served_flag = 1;   
-                    */        
+                    send_pkt(listen_socket ,request_buffer , STANDARD_LEN , neighbors[0] , "ENTR_ACK");
                 }
 
-                //else if(strcmp(msg_type , "ENTR_DAT") == 0){
-//
-                //    // anche qui
-//
-                //    printf("ACK INVIATO DALLA SELECT\nDOPO IL PKT DI %d\n" , sender_port);
-                //    send_ACK(listen_socket , "ENT_DACK" , sender_port);
-//
-                //    if(checkDataReceived(sender_port)){
-                //        getAggregateValue(server_buffer);
-                //    }
-                //}
             }
 
             FD_CLR(listen_socket , &read_fds);
@@ -541,12 +480,3 @@ int main(int argc , char** argv){
 
     return 0;
 }
-
-
-/*
-    Struttura dei comandi
-
-    start DS_addr DS_port
-    add type quantity
-    get aggr(TOT , DIFF) type(TAMPO , NEW) period
-*/

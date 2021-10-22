@@ -50,7 +50,9 @@ int i , j;
 int mutex_flag;
 
 // buffer e buf_len
-char buffer[MAX_LIST_LEN];
+char manager_buffer[STANDARD_LEN];
+char peer_buffer[STANDARD_LEN];
+char buffer[STANDARD_LEN];
 int buf_len;
 
 int main(int argc , char** argv){
@@ -143,9 +145,7 @@ int main(int argc , char** argv){
             int sender_port;
             char request_received[HEADER_LEN];
 
-            sender_port = recv_send_pkt(listen_socket , request_received , HEADER_LEN);
-
-            //printf("Ho ricevuto dal client %d --> %s\n" , sender_port , request_received);           
+            sender_port = recv_send_pkt(listen_socket , request_received , HEADER_LEN);           
 
             // richiesta di connessione
             if(strcmp(request_received , "CONN_REQ") == 0){
@@ -164,8 +164,6 @@ int main(int argc , char** argv){
                 // se tutto va bene
                 send_ACK(listen_socket , "CONN_ACK" , sender_port);
                 printf("Connessione riuscita con successo\n");
-
-
                 
                 for( i = 0 ; i< NUM_PEER ; i++){
                     updated[i] = 0;
@@ -192,14 +190,14 @@ int main(int argc , char** argv){
 
 
                 // invio al peer la porta del manager
-                buf_len = sprintf(buffer , "%s %d" , "MNG_PORT" , manager_port);
-                send_pkt(listen_socket , buffer , buf_len , sender_port , "MNG_ACKP");
+                buf_len = sprintf(peer_buffer , "%s %d" , "MNG_PORT" , manager_port);
+                send_pkt(listen_socket , peer_buffer , buf_len , sender_port , "MNG_ACKP");
                 printf("inviato al peer %d la porta del manager\n" , sender_port);
 
 
                 // invio il nuovo peer al manager
-                buf_len = sprintf(buffer , "%s %d" , "UPDT_LST" , sender_port);
-                send_pkt(listen_socket , buffer , buf_len , manager_port , "MUPD_ACK");
+                buf_len = sprintf(manager_buffer , "%s %d" , "UPDT_LST" , sender_port);
+                send_pkt(listen_socket , manager_buffer , buf_len , manager_port , "MUPD_ACK");
                 printf("Ho inviato al manager il nuovo peer\n");
 
                 FD_CLR(listen_socket , &read_fds);
@@ -242,8 +240,8 @@ int main(int argc , char** argv){
 
                 // MANAGER
                 // invio il peer da rimuovere al manager
-                buf_len = sprintf(buffer , "%s %d" , "REMV_LST" , sender_port);
-                send_pkt(listen_socket , buffer , buf_len , manager_port , "REMV_ACK");
+                buf_len = sprintf(manager_buffer , "%s %d" , "REMV_LST" , sender_port);
+                send_pkt(listen_socket , manager_buffer , buf_len , manager_port , "REMV_ACK");
                 printf("Ho inviato al manager il peer da rimuovere\n");
 
 

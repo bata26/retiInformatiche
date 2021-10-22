@@ -266,7 +266,7 @@ void askToPeer(char date[DATE_LEN] , int* tot){
     while(!allPeer() && !today_flag){
         int port;
 
-        port = recv_pkt(listen_socket , receiver_buffer , MAX_STDIN_LEN ,ALL_PEER , "ENTR_DAT" , "ENT_DACK");
+        port = recv_pkt(listen_socket , receiver_buffer , STANDARD_LEN ,ALL_PEER , "ENTR_DAT" , "ENT_DACK");
         
         if(checkDataReceived(port)){
             // la risposta e' valida quindi posso aggiungere i dati

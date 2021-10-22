@@ -34,8 +34,10 @@ struct sockaddr_in listen_addr;
 socklen_t listen_addr_len;
 
 //buffer per i comandi da stdin
-char manager_buffer[MAX_STDIN_LEN];
-int buf_len = MAX_STDIN_LEN;
+char manager_buffer[STANDARD_LEN];
+char peer_buffer[STANDARD_LEN];
+char server_buffer[STANDARD_LEN];
+int buf_len = STANDARD_LEN;
 
 // buffer per i comandi
 char command[MAX_COMMAND_LEN];
@@ -158,26 +160,28 @@ int main(int argc , char** argv){
             else if(strcmp(request_received , "REMV_LST") == 0 && sender_port == server_port){
                 int port_to_remove , tamponi , casi;
 
+                strcpy(server_buffer , manager_buffer);
+
                 printf("Ricevuto dal DS il nuemro di porta di un peer che si e' disconnesso\n");
 
                 send_ACK(listen_socket , "REMV_ACK" , server_port);
 
-                sscanf(manager_buffer , "%s %d" , request_received , &port_to_remove);
+                sscanf(server_buffer , "%s %d" , request_received , &port_to_remove);
 
                 removePeer(port_to_remove , peer);
                 num_peer--;
 
                 printf("Rimosso il peer %d alla lista dei peer" , port_to_remove);
 
-                memset(manager_buffer , 0 , MAX_STDIN_LEN );
+                memset(manager_buffer , 0 , STANDARD_LEN);
 
                 printf("Aspetto dal peer %d i dati del giorno..\n" , port_to_remove);
 
-                recv_pkt(listen_socket , manager_buffer , buf_len , port_to_remove , "TDAY_AGG" , "MDAY_ACK");
+                recv_pkt(listen_socket , peer_buffer , buf_len , port_to_remove , "TDAY_AGG" , "MDAY_ACK");
 
                 printf("Ricevuti i dati giornalieri del peer %d" ,port_to_remove);
 
-                sscanf(manager_buffer , "%s %d %d" , command , &tamponi , &casi);
+                sscanf(peer_buffer , "%s %d %d" , command , &tamponi , &casi);
 
                 dati_giornalieri[TAMPONE_IND].value += tamponi;
                 dati_giornalieri[CASO_IND].value += casi;
@@ -201,8 +205,8 @@ int main(int argc , char** argv){
                 
                 flood_id++;
                 // preparo il buffer
-                buf_len = sprintf(manager_buffer , "%s %d %d" , "PEER_LST" , num_peer , flood_id);
-                send_pkt(listen_socket , manager_buffer , buf_len , sender_port , "PLST_ACK");
+                buf_len = sprintf(peer_buffer , "%s %d %d" , "PEER_LST" , num_peer , flood_id);
+                send_pkt(listen_socket , peer_buffer , buf_len , sender_port , "PLST_ACK");
                 printf("numero di peer inviato e ricevuto ACK\n");
 
             }
@@ -213,9 +217,9 @@ int main(int argc , char** argv){
                 send_ACK(listen_socket , "MUTX_ACK" , sender_port);
                 // mando al peer iol valore di mutex, quindi se invio 1 il peer non puo ottenere il mutex
 
-                buf_len = sprintf(manager_buffer , "%s %d" , "MUTX_VAL" , mutex_flag);
+                buf_len = sprintf(peer_buffer , "%s %d" , "MUTX_VAL" , mutex_flag);
                 
-                send_pkt(listen_socket , manager_buffer , buf_len , sender_port , "MUTX_ACQ");
+                send_pkt(listen_socket , peer_buffer , buf_len , sender_port , "MUTX_ACQ");
 
                 if(!mutex_flag){
                     mutex_flag = 1; 
@@ -229,7 +233,7 @@ int main(int argc , char** argv){
                 
                 if(mutex_flag){
                     mutex_flag = 0;
-                    send_pkt(listen_socket , "MTX_ULCK" , HEADER_LEN , server_port , "MTX_LUCK");
+                    send_pkt(listen_socket , "MTX_ULCK" , HEADER_LEN , server_port , "MTX_LUSTANDARD_LENCK");
                 } 
             }
 
