@@ -23,6 +23,11 @@ extern char command[MAX_COMMAND_LEN];
 extern struct datiSalvati dati_giornalieri[DATA_LEN];
 extern int peer[NUM_PEER];
 
+
+/*
+Mando a ogni peer connesso un pacchetto di TDAY_CLS per chiedere i dati raccolti del giorno,
+dopodichè invio un pacchetto di TDAY_AGG con i dati aggregati di tutti i peer.
+*/
 void closeRegister(){
     int i , tamponi , casi;
 

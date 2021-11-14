@@ -26,7 +26,6 @@
 // data
 struct datiSalvati peer_data[DATA_LEN];
 
-
 // porta che identifica il peer
 int my_port;
 
@@ -58,17 +57,9 @@ int manager_port;
 // booleano che indica se e' avvenuta la connession al DS o ancora no
 int connected;
 
-// struttura per mantenere traccia dei vici
+// struttura per mantenere traccia dei vicini
 int neighbors[NUM_NEIGHBORS]; 
 
-// gestione del file
-FILE * data_file;
-
-// il manager gestisce le richieste di flooding, quando invia il numero di peer connessi al peer,
-// gli invia anche un ID per la flooding request, cosi un peer sa se ha gia' partecipato o no
-// e si evitano loop di request
-int last_flood_request_id;
-int served_flag;
 
 // strutture per la gestione dei dati aggregati:
 // - numero di risposte ricevute per una richiesta
@@ -81,14 +72,14 @@ int today_aggr;
 int yesterday_aggr;
 int today_flag; // settata a 1 quando troviamo il def  
 char util_aggr_type[AGGR_LEN]; // TOTALE VARIAZIONE
-char util_type[AGGR_LEN]; //TAMPONCE , CASO
+char util_type[AGGR_LEN]; //TAMPONE , CASO
 
-//DEBUG
+//comando ricevuto
 char comando[MAX_COMMAND_LEN];
 
 // flag per accettazione dati
-int data_flag;
-int mutex_flag;
+int data_flag; // flag che viene resettato quando il manager blocca l'inserimento dati da stdin
+int mutex_flag; // flag che viene settato quando abbiamo la mutex per la get, se qualcuno sta eseguendo una get non possiamo disconnetterci
 
 int main(int argc , char** argv){
 
@@ -99,14 +90,7 @@ int main(int argc , char** argv){
     connected = 0;
 
     //ricavo il numero di porta
-    my_port = atol(argv[1]);
-    
-
-    //printf("atoi -- > %d" , atoi(argv[1]));
-
-    //my_port = 5001;
-    server_port = 4242;
-    
+    my_port = atoi(argv[1]);
 
     //creo il socket di ascolto
     listen_socket = create_listener_socket(&listen_addr , &listen_addr_len , my_port);
@@ -116,11 +100,12 @@ int main(int argc , char** argv){
     FD_SET(0 , &master);
     fdmax = listen_socket + 1;
 
+
     stampaComandi(my_port);
+    // pulisco la struttura dati per la gestione dei vicini
     setupData(peer_data);
 
-    last_flood_request_id = 0;
-
+    // posso accettare comandi da stdin
     data_flag = 1;
 
     while(1){
@@ -129,10 +114,9 @@ int main(int argc , char** argv){
         // non viene modificato
         read_fds = master; 
 
-        //if(strcmp(comando , "start") == 0) goto connetti;
         select(fdmax , &read_fds , NULL , NULL , NULL);
 
-        // se è arrivato qualcosa da stdin
+        // comandi da stdin
         if(FD_ISSET( 0 , &read_fds)){
 
             char command[MAX_COMMAND_LEN];
@@ -154,6 +138,13 @@ int main(int argc , char** argv){
                     continue;
                 }
 
+                sscanf(stdin_buffer , "%s %d" , command , &server_port);
+
+                if(server_port == 0){
+                    printf("Inserita porta del server errata, riprovare\n");
+                    continue;
+                }
+
                 printf("Invio al DS la richiesta di connessione\n");
                 
                 send_pkt(listen_socket , "CONN_REQ" , HEADER_LEN , server_port, "CONN_ACK");
@@ -163,7 +154,7 @@ int main(int argc , char** argv){
 
                 printf("Connessione riuscita!\n");            
 
-                FD_CLR(0 , &read_fds);
+                //FD_CLR(0 , &read_fds);
             }
             // stop
             else if(strcmp(command , "stop") == 0){
@@ -174,10 +165,10 @@ int main(int argc , char** argv){
                     continue;
                 }
 
-                if(mutex_flag){
-                    printf("Non posso disconnettermi in quanto c'e' una get in corso\n");
-                    continue;
-                }
+                //if(mutex_flag){
+                //    printf("Non posso disconnettermi in quanto c'e' una get in corso\n");
+                //    continue;
+                //}
 
                 send_pkt(listen_socket , "CAN_I_LV" ,HEADER_LEN , server_port , "ACK_U_LV");
                 memset(server_buffer ,0 , STANDARD_LEN);
@@ -185,7 +176,7 @@ int main(int argc , char** argv){
 
                 sscanf(server_buffer , "%s %d" , command , &mutex_flag);
 
-                printf("Mutex_Flag-->%d\n" , mutex_flag);
+                // printf("Mutex_Flag-->%d\n" , mutex_flag);
 
                 if(mutex_flag){
                     printf("Non posso disconnettermi al momento..\n");
@@ -205,7 +196,7 @@ int main(int argc , char** argv){
                 writeOnFile('N');
 
 
-                FD_CLR(0 , &read_fds);
+                //FD_CLR(0 , &read_fds);
 
             }
 
@@ -239,7 +230,7 @@ int main(int argc , char** argv){
                 printf("Dati inseriti, Resoconto della giornata:\n");
                 printf("Tamponi effettuati: %d\n"  , peer_data[TAMPONE].value);
                 printf("Nuovi casi registrati: %d\n"  , peer_data[CASO].value);
-                FD_CLR(0 , &read_fds);
+                //FD_CLR(0 , &read_fds);
             }
 
             // get
@@ -270,28 +261,18 @@ int main(int argc , char** argv){
                 }
 
                 printf("Ottenuto il mutex per la get\n");
+
+                // riga da decommentare per vedere il funzionamento della mutex per eseguire la get
                 //if(my_port == 5001) sleep(5);
 
 
                 ret = sscanf(stdin_buffer , "%s %s %s %s %s" , command , tipo_aggr , tipo , data_iniziale , data_finale);
 
-                //printf("\nAppena inseriti:\nTipo_aggr->%s\nTipo->%s\nDataIniziale->%s\nDataFinale->%s\n" , tipo_aggr , tipo , data_iniziale , data_finale);
-
-                /*
-                    CASI:
-                    - 2 date distinte
-                    - nessuna data
-                    - una delle due *
-
-                    CONTROLLI
-                    - date distinte-> prima data inserita < seconda data
-                    - controlli su numero mese anno giorno etc
-                    - La variazione ha bisogno di due date distinte, mentre totale no
-                */
 
                 // numero errato di parametri
                 if(ret != 3 && ret != 5){
                     printf("I parametri inseriti non sono validi, riprovare..\n");
+                    send_pkt(listen_socket , "MUTX_LEA" , HEADER_LEN , manager_port , "MTX_LEAK");
                     continue;
                 }
 
@@ -309,6 +290,7 @@ int main(int argc , char** argv){
 
                 if(!ret){
                     printf("Date non valide\n\n");
+                    send_pkt(listen_socket , "MUTX_LEA" , HEADER_LEN , manager_port , "MTX_LEAK");
                     continue;
                 }
                 
@@ -473,7 +455,7 @@ int main(int argc , char** argv){
 
             }
 
-            FD_CLR(listen_socket , &read_fds);
+            //FD_CLR(listen_socket , &read_fds);
         }
 
     }

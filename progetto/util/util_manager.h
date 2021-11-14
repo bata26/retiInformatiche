@@ -1,1 +1,1 @@
-void closeRegister(struct datiSalvati manager_data[DATA_LEN] , int*  , int );
+void closeRegister();

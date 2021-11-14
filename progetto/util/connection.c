@@ -14,7 +14,7 @@
 #include "costanti.h"
 
 
-
+// setup sockaddr_in
 void setup_addr(struct sockaddr_in * sockaddr , socklen_t * len , int port){
     memset(sockaddr , 0 , sizeof((*sockaddr)));
     sockaddr->sin_family = AF_INET;
@@ -45,20 +45,13 @@ int create_listener_socket(struct sockaddr_in * sockaddr , socklen_t * len , int
 
     }
 
-    //////printf("nella listen socket\n");
 
     return sd;
 
 }
 
 
-/*
- cosa mi serve:
- socket di invio
- buffer contenente il msg
- dest_addr -> sockaddr_in del dest
- addrlen -> lunghezza di dest_addr
-*/
+
 // manda il messaggio msg di dimension buf_len sul socket sd alla porta port_dest , si mette in attesa di expected_ack,
 // controllando che l'ack sia arrivato dalla porta destinataria
 void send_pkt(int sd , char* msg , int buf_len , int port_dest , char * expected_ack){
@@ -86,11 +79,10 @@ void send_pkt(int sd , char* msg , int buf_len , int port_dest , char * expected
     // finchè non ho inviato e ricevuto l'ack
     while(!send){        
         do{
-            //printf("provo ad inviare %s a %d\n" , msg , port_dest);
+            
             ret = sendto(sd , msg , buf_len , 0 , (struct sockaddr*)&dest_addr , dest_len);
         }while(ret<0);
 
-        //////printf("Pacchetto inviato\nResto in attesa dell'ack\n");
         
 
         interval.tv_sec = 1;
@@ -118,7 +110,7 @@ void send_pkt(int sd , char* msg , int buf_len , int port_dest , char * expected
             // controllo se entro un loop di richieste del tipo 
             // int sd , char* msg , int buf_len , int port_dest , char * expected_ack
             if(strcmp(msg , "REQ_ENTR") == 0 && dest_addr.sin_port == tmp_addr.sin_port && dest_addr.sin_addr.s_addr == tmp_addr.sin_addr.s_addr && strcmp(msg , received) == 0){
-                ////printf("Rischio di entrare in un loop di richieste, provo a uscire e a gestire la richiesta\n");
+                printf("Rischio di entrare in un loop di richieste, provo a uscire e a gestire la richiesta\n");
                 send = 1;
             }
 
@@ -126,10 +118,10 @@ void send_pkt(int sd , char* msg , int buf_len , int port_dest , char * expected
             // controllo di aver ricevuto l'ack effettivamente dal processo a cui l'avevo inviato, 
             // controllando la coppia indirizzo/porta e se cioò che ho ricevuto è effettivamente l'ack
             if(dest_addr.sin_port == tmp_addr.sin_port && dest_addr.sin_addr.s_addr == tmp_addr.sin_addr.s_addr && strcmp(received , expected_ack) == 0){
-                ////printf("Ho ricevuto l'ack %s da %d\n" , received , ntohs(tmp_addr.sin_port));
+                
                 send = 1;
             }else{
-                ////printf("Non ho ricevuto l'ack atteso, reinvio..\n");
+                printf("Non ho ricevuto l'ack atteso, reinvio..\n");
             }
         }
 
@@ -141,7 +133,9 @@ void send_pkt(int sd , char* msg , int buf_len , int port_dest , char * expected
 }
 
 
-/**/
+/*
+Invio l'ack ack_to_send al processo dest_port
+*/
 
 void send_ACK(int socket , char * ack_to_send , int dest_port){
     int ret;
@@ -152,16 +146,16 @@ void send_ACK(int socket , char * ack_to_send , int dest_port){
     setup_addr(&dest_addr , &addr_len , dest_port);
     ret = 0;
 
-    ////printf("Provo ad inviare l'ack %s a %d\n" , ack_to_send , dest_port);
     // mando l'ack senza dare peso a cosa potrei ricevere indietro, tanto se il peer non ha ricevuto l'ack rimanda il msg
     do{
         ret = sendto(socket , ack_to_send , ACK_LEN , 0 , (struct sockaddr *)&dest_addr , addr_len);
     }while(ret < 0 );
 
-    ////printf("Ack inviato con successo\n");
 }
 
-
+/*
+Riceve un pacchetto sul socket e ritorna la porta del sender
+*/
 int recv_send_pkt(int socket , char * buf , int buf_len){
     int ret;
     struct sockaddr_in sender_addr;
@@ -176,13 +170,12 @@ int recv_send_pkt(int socket , char * buf , int buf_len){
         perror("Errore nella recv from -> ");
     }
 
-    ////printf("Ricevuto pacchetto %s da %d\n" , buf , ntohs(sender_addr.sin_port));
-
     return ntohs(sender_addr.sin_port);
 }
 
-
-
+/*
+Mi metto in attesa del pacchetto expected_header da sender_port, se arriva rispondo con l'ack ack_to_send
+*/
 int recv_pkt(int socket , char* buffer , int buf_len , int sender_port , char* expected_header , char * ack_to_send){
     struct sockaddr_in sender_addr;
     socklen_t sender_addr_len;
@@ -192,7 +185,6 @@ int recv_pkt(int socket , char* buffer , int buf_len , int sender_port , char* e
 
     received = 0;
 
-    ////printf("Mi metto in attesa del pacchetto %s\nda %d, ntohs(port)=%d\n" , expected_header , sender_port , ntohs(sender_port));
 
     while(!received){
         FD_ZERO(&read_fds);
@@ -200,19 +192,20 @@ int recv_pkt(int socket , char* buffer , int buf_len , int sender_port , char* e
 
         select(socket+1 , &read_fds , NULL , NULL , NULL);
 
-        // sicuramente arriva qualcosa dal socket
+        // arriva qualcosa dal socket
         if(FD_ISSET(socket  , &read_fds)){
             recvfrom(socket , buffer , buf_len , 0 , (struct sockaddr*)&sender_addr , &sender_addr_len);
 
             sscanf(buffer , "%s" , header_buf);
 
-            ////printf("sender_addr->sin_port %d\nntohs(port)->%d\n" , sender_addr.sin_port , ntohs(sender_addr.sin_port));
 
+            /*
+            Nel caso di flooding, il flooder non aspetta pacchetti da una porta specifica, se il sender è ALL_PEER il controllo si sposta solo sull'header
+            */
             if( ( (sender_port == ALL_PEER) || (ntohs(sender_addr.sin_port) == sender_port) ) && strcmp(expected_header , header_buf) == 0){
-                ////printf("Ho ricevuto da %d il pacchetto %s\n" , ntohs(sender_addr.sin_port) , buffer);
                 received = 1;
             }else{
-                ////printf("Arrivato un messaggio diverso da quello che aspettavo. Mi rimetto in attesa\n");
+                printf("Arrivato un messaggio diverso da quello che aspettavo. Mi rimetto in attesa\n");
             }
         }
     }

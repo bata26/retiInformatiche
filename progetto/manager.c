@@ -23,7 +23,7 @@
 #include "./util/data.h"
 
 // manager utils
-//#include "./util/util_manager.h"
+#include "./util/util_manager.h"
 
 // porta che identifica il peer
 int my_port;
@@ -33,9 +33,11 @@ int listen_socket;
 struct sockaddr_in listen_addr;
 socklen_t listen_addr_len;
 
-//buffer per i comandi da stdin
+//buffer per tutte le richieste
 char manager_buffer[STANDARD_LEN];
+// buffer per i comandi dai peer
 char peer_buffer[STANDARD_LEN];
+// buffer per le richieste del server
 char server_buffer[STANDARD_LEN];
 int buf_len = STANDARD_LEN;
 
@@ -63,9 +65,6 @@ int current_hour;
 int current_min;
 int current_day;
 
-// flag che mi dice se il DS ha chiuso prima di me
-int server_flag;
-int day_close; // giorno in cui il server ha chiuso
 
 
 // struttura oer la gestione dei dati
@@ -74,8 +73,6 @@ struct datiSalvati dati_giornalieri[DATA_LEN];
 // mutex per le get
 int mutex_flag; // 1 quando qualcuno sta gestendo una get
 
-// id delle request per flooding
-int flood_id;
 
 int i , j;
 
@@ -86,7 +83,6 @@ int main(int argc , char** argv){
 
     printf("avvio il manager...\n");
 
-    flood_id = 0;
 
     //inizializzo i set
     FD_ZERO(&master);
@@ -116,8 +112,6 @@ int main(int argc , char** argv){
     send_pkt(listen_socket, "MNG_CONN" , HEADER_LEN , server_port , "MNG_ACK");
     printf("Connessione con il DS avvenuta con successo\n");
 
-    //gestione flag
-    server_flag = 0;
 
     
     while(1){
@@ -134,7 +128,7 @@ int main(int argc , char** argv){
 
         select(fdmax , &read_fds , NULL , NULL , &timeout);
 
-        // richieste dai peer
+        // richieste sul socket
         if(FD_ISSET(listen_socket , &read_fds)){
             int sender_port;
             char request_received[HEADER_LEN];
@@ -157,12 +151,16 @@ int main(int argc , char** argv){
                 printf("Ho aggiunto il peer %d alla lista dei peer\n" , new_port);
             }
 
+            // il server avverte sulla disconnessione di uno dei peer
+            // ogni volta che un peer si disconnette, comunica al manager i dati che ha raccolto
+            // così facendo quando alle 18 si chiudono i register, i peer ancora connessi hanno
+            // tutti i dati
             else if(strcmp(request_received , "REMV_LST") == 0 && sender_port == server_port){
                 int port_to_remove , tamponi , casi;
 
                 strcpy(server_buffer , manager_buffer);
 
-                printf("Ricevuto dal DS il nuemro di porta di un peer che si e' disconnesso\n");
+                printf("Ricevuto dal DS il numero di porta di un peer che si e' disconnesso\n");
 
                 send_ACK(listen_socket , "REMV_ACK" , server_port);
 
@@ -173,7 +171,9 @@ int main(int argc , char** argv){
 
                 printf("Rimosso il peer %d alla lista dei peer" , port_to_remove);
 
+                
                 memset(manager_buffer , 0 , STANDARD_LEN);
+                memset(peer_buffer , 0 , STANDARD_LEN);
 
                 printf("Aspetto dal peer %d i dati del giorno..\n" , port_to_remove);
 
@@ -183,6 +183,7 @@ int main(int argc , char** argv){
 
                 sscanf(peer_buffer , "%s %d %d" , command , &tamponi , &casi);
 
+                // agigungo i dati appena raccolti
                 dati_giornalieri[TAMPONE_IND].value += tamponi;
                 dati_giornalieri[CASO_IND].value += casi;
                 printf("Dati aggiunti:\nTamponi:%d\nCasi:%d\n" , dati_giornalieri[TAMPONE_IND].value , dati_giornalieri[CASO_IND].value);
@@ -190,27 +191,30 @@ int main(int argc , char** argv){
 
             }  
 
-            // il DS chiude
+            // il DS esegue una esc, il manager allora chiude tutti i register
             else if(strcmp(request_received , "DS_LEAVE") == 0){
                 send_ACK(listen_socket , "DS_LEACK" , server_port);
                 printf("Il DS si sta disconnettendo, chiudo i register..\n");
                 closeRegister();
                 printf("Register chiusi\n");
             }
+
             // il peer richiede il numero di peer attualmente connessi
             else if(strcmp(request_received , "TOT_PEER") == 0){
 
                 send_ACK(listen_socket , "PEER_ACK" , sender_port);
                 printf("Il peer %d richiede il numero di peer connessi\n" , sender_port);
                 
-                flood_id++;
+               
                 // preparo il buffer
-                buf_len = sprintf(peer_buffer , "%s %d %d" , "PEER_LST" , num_peer , flood_id);
+                memset(peer_buffer , 0 , STANDARD_LEN);
+                buf_len = sprintf(peer_buffer , "%s %d" , "PEER_LST" , num_peer);
                 send_pkt(listen_socket , peer_buffer , buf_len , sender_port , "PLST_ACK");
                 printf("numero di peer inviato e ricevuto ACK\n");
 
             }
 
+            // il peer per eseguire una get richiede una mutex sulla get
             else if(strcmp(request_received , "MUTX_GET") == 0){
                 int buf_len;
 
@@ -223,29 +227,35 @@ int main(int argc , char** argv){
 
                 if(!mutex_flag){
                     mutex_flag = 1; 
+                    // avverto il server che è in esecuzione una get
+                    // così che nessun peer si possa disconnettere durante l'esecuzione
+                    // della get
                     send_pkt(listen_socket , "MUTX_LCK" , HEADER_LEN , server_port , "MTX_LACK");
                 }
 
             }
 
+            // il peer lascia la mutua esclusione
             else if(strcmp(request_received , "MUTX_LEA") == 0){
                 send_ACK(listen_socket , "MTX_LEAK" , sender_port);
                 
                 if(mutex_flag){
                     mutex_flag = 0;
-                    send_pkt(listen_socket , "MTX_ULCK" , HEADER_LEN , server_port , "MTX_LUSTANDARD_LENCK");
+                    //avverto il server che la get è terminata
+                    send_pkt(listen_socket , "MTX_ULCK" , HEADER_LEN , server_port , "MTX_LUCK");
                 } 
             }
 
         }
 
-        // stdin
+        // comandi da stdin utili per debug
         else if(FD_ISSET( 0 , &read_fds)){
             memset(manager_buffer ,  0 , MAX_STDIN_LEN);
 
             fgets(manager_buffer , MAX_STDIN_LEN , stdin);
             sscanf(manager_buffer , "%s" , command);
 
+            // blocco comandi da stdin per i peer
             if(strcmp(command , "close") == 0){
                 int i;
                 for(i = 0 ; i < NUM_PEER ; i++){
@@ -255,6 +265,7 @@ int main(int argc , char** argv){
                 }
             }
             
+            // chiudo i register
             else if(strcmp(command , "closereg") == 0){
                 closeRegister();
             }
@@ -267,14 +278,12 @@ int main(int argc , char** argv){
         time(&t);
         timeinfo = localtime(&t);
 
-        //printf("Current time --> %s\n" , ctime(&t));
-        //printf("Time -> %d\n" , timeinfo->tm_mon);
 
         current_day = timeinfo->tm_mday;
         current_min = timeinfo->tm_min;
         current_hour = timeinfo->tm_hour;
 
-        //printf("Current_day -> %d \nCurrent_hour->%d\nCurrent_min->%d\n" , current_day , current_hour , current_min);
+        
         // se sono le 17 e i minuti sono compresi tra le 51 e 55 
         if(current_hour == 17){
             if(current_min >= 56){

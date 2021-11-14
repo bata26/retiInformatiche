@@ -6,23 +6,33 @@ extern int num_peer;
 extern int neighbors[NUM_PEER][NUM_NEIGHBORS];
 extern int peer[NUM_PEER];
 
+
+// ritorna l'indice del peer, basato sul numero di porta
+// l'offset è definito dal modulo per BASE_PORT - 1
 int getPeerIndex(int peer_port){
     return ((peer_port % BASE_PORT) - 1);
 }
 
+/*
+Parto dalla posizione index e vado nella direzione direction (0 --> decremento , 1 --> incremento), 
+appena trovo un peer connesso, vuol dire che rappresenta il peer piu "vicino" e lo salvo come neighbor.
 
+NB: direction rappresenta anche l'indice della struct neighbors in cui salvare il peer che si trova
+*/
 void findNextNeighbor(int direction, int index){
-    int found, temp_index;
+    int found, temp_index; 
 
     found = 0;
 
+    // setup temp_index in base alla direzione
     if(direction){
         temp_index = (index + 1)%NUM_PEER;
-    }else{
+    }else{ 
         if(index == 0) temp_index = NUM_PEER - 1;
         else temp_index = index - 1;
     }
 
+    // scorro finchè non trovo un peer o finchè non ritorno all'indice di partenza senza aver trovato nessuno
     while(!found && temp_index != index ){
 
         if(peer[temp_index] != 0){
@@ -49,13 +59,14 @@ void getNeighbors(int *updated){
         return;
     }
 
+    // se ho solo due peer connessi non ho bisogno di scorrere nelle due direzioni quindi scorro finchè non trovo l'altro peer connesso
+    // appena lo trovo ognuno diventa il neighbor dell'altro
     if(num_peer == 2){
         printf("Branch con due soli peer connessi\n");
         for(i = 0; i < NUM_PEER ; i++){
             if(peer[i] == 0) continue;
             
-            printf("Analizzo il peer %d, i suoi vicini prima della findnext sono:\n%d\n%d\n" , peer[i] , neighbors[i][0] , neighbors[i][1]);
-            findNextNeighbor(0 , i);
+            findNextNeighbor(0 , i); // riempio prima la posizione 0 della struct neighbor
 
             // controllo di non avere duplicare, puo' succedere quando si disconnette il peer che era in posizione 0
             if(neighbors[i][0] == neighbors[i][1]) neighbors[i][1] = -1;
@@ -114,25 +125,24 @@ void setupNeighbors(int neighbors[][NUM_NEIGHBORS]){
 
 // preparo il buffer per eventuali Neighbors update o List
 void setupNeighborsBuffer(char * buffer , int* len , char * msg , int  neighbors[][NUM_NEIGHBORS] , int index){
-    // invio la lista dei neighbors a chi si e' appena connesso
-    if(neighbors[index][0] == -1 && neighbors[index][1] == -1)
+    
+    if(neighbors[index][0] == -1 && neighbors[index][1] == -1) // nessun vicino
         *len = sprintf(buffer , "%s" , msg);
-    else if(neighbors[index][1] == -1)
+    else if(neighbors[index][1] == -1) // solo un vicino, controllo con 1 perchè è la prima direzione che viene controllata è la 0
         *len = sprintf(buffer , "%s %d" , msg  , neighbors[index][0]);
-    else   
+    else   // due neighbor,
         *len = sprintf(buffer , "%s %d %d" ,msg  , neighbors[index][0] , neighbors[index][1]);
 
 }
 
 // rimuovo il peer disconnesso dai neighbors
-
 void cleanNeighbors(int sender_port , int  neighbors[][NUM_NEIGHBORS]){
     int i , j;
     
     for(i = 0 ; i < NUM_PEER; i++){
         for(j = 0 ; j < NUM_NEIGHBORS ; j++){
             if(neighbors[i][j] == sender_port){
-                neighbors[i][j] = -1;
+                neighbors[i][j] = -1; // rimuovo il peer disconnesso dai vicini di tutti gli altri peer
             }
         }
     }

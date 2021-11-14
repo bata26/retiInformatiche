@@ -57,7 +57,6 @@ int buf_len;
 
 int main(int argc , char** argv){
 
-    //printf("avvio il server...\n");
     stampaComandi();
 
 
@@ -68,11 +67,9 @@ int main(int argc , char** argv){
 
     //ricavo il numero di porta
     my_port = atoi(argv[1]);
-    //my_port = 4242;
 
     //creo il socket di ascolto
     listen_socket = create_listener_socket(&listen_addr , &listen_addr_len , my_port);
-    //printf("socket di ascolto creato --> %d\n" , listen_socket);
 
     //aggiungo il socket di ascolto e il stdin
     FD_SET(listen_socket , &master);
@@ -92,14 +89,13 @@ int main(int argc , char** argv){
 
         select(fdmax , &read_fds , NULL , NULL , NULL);
 
-        // se è arrivato qualcosa da stdin
+        // comandi da stdin
         if(FD_ISSET( 0 , &read_fds)){
 
             char command[MAX_COMMAND_LEN];
 
             fgets(stdin_buffer , MAX_COMMAND_LEN , stdin);
             sscanf(stdin_buffer, "%s", command);
-            //command[MAX_COMMAND_LEN] = '\0';
 
             printf("ricevuto il comando: %s\n" , command);
 
@@ -109,9 +105,7 @@ int main(int argc , char** argv){
             }
 
             else if(strcmp(command , "showpeers") == 0){
-                //printf("Prima della stampa\n");
                 stampaPeer(peer);
-                //printf("dopo la stampa\n");
 
                 FD_CLR(0 , &read_fds);
             }
@@ -136,7 +130,6 @@ int main(int argc , char** argv){
                 FD_CLR(0 , &read_fds);
             }
 
-            
             memset(command , 0 , MAX_COMMAND_LEN);
         }
 
@@ -161,7 +154,7 @@ int main(int argc , char** argv){
                 // aggiungo il peer
                 addPeer(sender_port , peer);
 
-                // se tutto va bene
+                // invio ACK al peer
                 send_ACK(listen_socket , "CONN_ACK" , sender_port);
                 printf("Connessione riuscita con successo\n");
                 
@@ -169,8 +162,11 @@ int main(int argc , char** argv){
                     updated[i] = 0;
                 }
 
+                // aggiorno la struttura dei neighbors
                 getNeighbors(updated);
 
+                // in base all'aggiornamento dei neighbors controllo quali peer hanno nuovi
+                // vicini così da inviare i nuovi vicini
                 for(i = 0 ; i <  NUM_PEER ; i++){
                     if(updated[i] == 0) continue;
 
@@ -203,7 +199,7 @@ int main(int argc , char** argv){
                 FD_CLR(listen_socket , &read_fds);
             }
 
-            // CONN_STP
+            // richiesta di disconnessione
             else if(strcmp(request_received , "CONN_STP") == 0){
                 int updated[NUM_PEER];
                 int i , buf_len , index;
@@ -227,8 +223,10 @@ int main(int argc , char** argv){
                     updated[i] = 0;
                 }
 
+                // aggiorno la struct dei neighbors
                 getNeighbors(updated);
 
+                // se ci sono nuovi neighbors aggiorno i peer rimasti connessi
                 for(i = 0 ; i < NUM_PEER ; i++){
                     if(updated[i] == 0) continue;
 
@@ -238,7 +236,6 @@ int main(int argc , char** argv){
                     printf("Invio la nuova lista dei neighbors al peer %d" , peer[i]);
                 }
 
-                // MANAGER
                 // invio il peer da rimuovere al manager
                 buf_len = sprintf(manager_buffer , "%s %d" , "REMV_LST" , sender_port);
                 send_pkt(listen_socket , manager_buffer , buf_len , manager_port , "REMV_ACK");
@@ -262,16 +259,19 @@ int main(int argc , char** argv){
                 manager_connected = 1;
             }    
 
+            // il manager avverte che è stata ottenuta la mutex 
             else if(strcmp(request_received , "MUTX_LCK") == 0){
                 send_ACK(listen_socket , "MTX_LACK" , manager_port);
                 mutex_flag = 1;
             }
 
+            // il manager avverte di poter rilasciare il mutex
             else if(strcmp(request_received , "MTX_ULCK") == 0){
                 send_ACK(listen_socket , "MTX_LUCK" , manager_port);
                 mutex_flag = 0;
             }
 
+            // il peer chiede se può disconnettersi
             else if(strcmp(request_received , "CAN_I_LV") == 0){
                 send_ACK(listen_socket , "ACK_U_LV" , sender_port);
                 
@@ -284,12 +284,3 @@ int main(int argc , char** argv){
 
     return 0;
 }
-
-
-/*
-    Struttura dei comandi
-
-    start DS_addr DS_port
-    add type quantity
-    get aggr(TOT , DIFF) type(TAMPO , NEW) period
-*/

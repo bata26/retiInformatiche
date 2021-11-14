@@ -1,7 +1,0 @@
-{
-    "C_Cpp.errorSquiggles": "Disabled",
-    "files.associations": {
-        "costanti.h": "c",
-        "connection.h": "c"
-    }
-}

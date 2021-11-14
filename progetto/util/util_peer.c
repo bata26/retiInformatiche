@@ -36,7 +36,7 @@ int connected_peer;
 
 extern struct  datiSalvati peer_data[DATA_LEN];
 
-
+// scrivo su file i dati del register
 void writeOnFile(char def){
     FILE * file_data;
     char filename[DATA_LEN];
@@ -46,7 +46,6 @@ void writeOnFile(char def){
     time(&t);
     timeinfo = localtime(&t);
 
-    //printf("Info:\nanno:%d\nmese:%d\ngiorno:%d\n" ,timeinfo->tm_year+1900 , timeinfo->tm_mon+1 , timeinfo->tm_mday );
     
     sprintf(filename , "%s%d%s" , FILE_PATH , my_port , ".txt");
     
@@ -80,8 +79,6 @@ int compareDates(char first_date[DATE_LEN] , char last_date[DATE_LEN]){
 	sscanf(first_date , "%d:%d:%d" , &num_first_date[0] , &num_first_date[1] , &num_first_date[2]);
 	sscanf(last_date , "%d:%d:%d" , &num_last_date[0] , &num_last_date[1] , &num_last_date[2]);
 
-	//printf("FIRST DATE:\ngiorno-> %d\nmese->%d\nanno->%d\n" , num_first_date[0] , num_first_date[1] , num_first_date[2]);
-	//printf("LAST DATE:\ngiorno-> %d\nmese->%d\nanno->%d\n" , num_last_date[0] , num_last_date[1] , num_last_date[2]);
 
 	// uguali
 	if( ( num_first_date[0] ==  num_last_date[0]) && (num_first_date[1] ==  num_last_date[1]) && (num_first_date[2] ==  num_last_date[2])) return 0;
@@ -102,6 +99,11 @@ int compareDates(char first_date[DATE_LEN] , char last_date[DATE_LEN]){
 	
 }
 
+
+/*
+Se durante il flooding uno dei peer risponde con un dato marcato F, aggiorno il file del flooding peer
+con i dati marcati
+*/
 void updateFile(char * buffer){
     /*
     Struttura del buffer:
@@ -163,6 +165,9 @@ void updateFile(char * buffer){
     }
 }
 
+/*
+Pulisco la struttura neighbors
+*/
 void cleanNeighbors(int * neighbors){
     int i;
 
@@ -171,50 +176,45 @@ void cleanNeighbors(int * neighbors){
     }
 }
 
+/*
+aggiorno il dato aggregato con i dati appena ricevuti da un peer
+*/
 void getAggregateValue(char * buffer){
     int casi, tamponi , res;
     char def;
     char date[DATE_LEN];
     char msg[HEADER_LEN];
     
+    // s eho già il dato definitivo del giorno
     if(today_flag) return;
 
     sscanf(buffer , "%s %s %d %d %c" , msg , date , &tamponi , &casi , &def);
 
     res = (strcmp(util_type , "TAMPONE") == 0) ? tamponi : casi;
     
+    // se marcato aggiorno il file
     if(def == 'F'){
         today_aggr = res;
         today_flag = 1;
 
-
-        // se dopo aver chiesto, sono riuscito a trovare il dato finale, aggiorno
-        // il mio file cosi da poter evitare il prossimo flooding
         updateFile(buffer);
     }else{
         today_aggr += res;
     }
 
-    //printf("DATE:%s\ntoday_aggr->%d\n" , date , today_aggr);
 }
 
 
 void stampaComandi(int port){
     printf("*********************** PEER %d AVVIATO ***********************\n" , port);
     printf("Comandi disponibili:\n\n");
-    printf("1) start DS_ADDR DS_PORT  -> Connette il peer al DS con indirizzo e porta specificati\n");
+    printf("1) start DS_PORT  -> Connette il peer al DS con indirizzo e porta specificati\n");
     printf("2) add type quantity -> Aggiunge il dato di tipo type \n");
     printf("3) get aggr type period -> Mostra Un resoconto aggregato aggr del dato type nel periodo period specificato \n");
     printf("4) stop -> Chiude la connessione con il DS\n");
-
-    //printf("Stampo roba per debvug extern:\n");
-    //printf("my_port:%d\n" , my_port);
-    //printf("neighbors[0]:%d\n" , neighbors[0]);
-    //printf("neighbors[1]:%d\n" , neighbors[1]);
-    //printf("manager_port:%d\n" , manager_port);
-    //printf("listen_socket:%d\n", listen_socket);
 }
 
+// ritorna 1 se ho ricevuto tutte le risposte dai peer attualmente connessi
 int allPeer(){
     return num_response == connected_peer;
 }
@@ -240,6 +240,7 @@ int checkDataReceived(int port){
     return 1;
 }
 
+// pulisco variabili per avviare un nuovo flooding
 void setupForFlooding(){
     int i;
 
@@ -252,27 +253,18 @@ void setupForFlooding(){
 }
 
 // manda ai vicini una richiesta per una specifica data
-/*
-    Come sono sicuro che il peer abbia effettivamente il dato corretto?
-    - se un peer si e' scollegato prima, il manager ha salvato le sue informazioni, 
-        se tutti si scollegano prima delle 18 il manager mantiene in un file le informazioni della specifica data,
-        pertanto se tutti i dati che riesco a raccogliere sono diversi, devo chiedere al manager
-    - se un solo peer ha salvato i dati corretti tutti rispondono con dati diversi, ma in questo caso chiedendo la manager,
-        questo non ha le informazioni di quel giorno salvate
-
-*/
 void askToPeer(char date[DATE_LEN] , int* tot){
     char receiver_buffer[MAX_STDIN_LEN];
 
-    //printf("Chiedo ai miei vicini informazioni sulla data: %s\n" , date );
+    memset(buffer , 0 , MAX_STDIN_LEN);
 
-    if(neighbors[0] == 0 && neighbors[1] == 0){
-        printf("Non ho vicini a cui chidere\n");
-    }
-
-    // devo chiedere al manager quanti ci sono connessi, cosi so quante risposte aspettarmi
+    // chiedo al manager il numero di peer attualmente connessi
     send_pkt(listen_socket , "TOT_PEER" , HEADER_LEN , manager_port , "PEER_ACK");
     recv_pkt(listen_socket , buffer , MAX_STDIN_LEN , manager_port , "PEER_LST" , "PLST_ACK");
+
+    connected_peer = 0;
+
+    //printf("buffer ricevuto dal manager: %s\n" , buffer);
 
     sscanf(buffer , "%s %d" , header , &connected_peer );
     connected_peer--;
@@ -280,7 +272,7 @@ void askToPeer(char date[DATE_LEN] , int* tot){
     //printf("Ci sono %d peer attualmente connessi oltre me\n" , connected_peer);
 
     if(connected_peer == 0){
-        printf("Sono L'unico peer connesso impossibile ottenere il dato richiesto\n");
+    //    printf("Sono L'unico peer connesso impossibile ottenere il dato richiesto\n");
         return;
     }
 
@@ -294,24 +286,18 @@ void askToPeer(char date[DATE_LEN] , int* tot){
     // mando la req al primo vicino poi mi metto in attesa di tutte le risposte
     send_pkt(listen_socket , buffer , buf_len , neighbors[0] , "ENTR_ACK");
 
+    // finchè non ho ricevuto la risposta da tutti i peer o ho ottenuto il register definitivo
     while(!allPeer() && !today_flag){
         int port;
 
         port = recv_pkt(listen_socket , receiver_buffer , STANDARD_LEN ,ALL_PEER , "ENTR_DAT" , "ENT_DACK");
         
         if(checkDataReceived(port)){
-            // la risposta e' valida quindi posso aggiungere i dati
             getAggregateValue(receiver_buffer);
         }
     }
 
-
-    //printf("flooding terminato\n");
-    //printf("Il totale di %s trovati per la data %s e' %d\n" , aggr_type , date , today_aggr);
-
     *tot += today_aggr;
-
-    //printf("tot-->%d\n" , *tot);
 
 }
 
@@ -324,11 +310,10 @@ int isLeapYear(int year){
     return 0;
 }
 
+// controlla se una data è valida
 int checkSingleDate(char date[DATE_LEN]){
     int result;
     int num_date[3];
-    //time_t t;
-    //struct tm* timeinfo;
 
     result = 0;
 
@@ -341,9 +326,10 @@ int checkSingleDate(char date[DATE_LEN]){
 
     if( (num_date[2] < START_YEAR) || 
         (num_date[1] < START_MONTH && num_date[2] == START_YEAR) ||
-        (num_date[2] == START_YEAR && num_date[1] && num_date[0] < START_DAY) 
+        (num_date[2] == START_YEAR && num_date[1] == START_MONTH && num_date[0] < START_DAY) 
     ){
         printf("La data inserita è antecedente alla data di avvio del sistema\n");
+        return result;
     }
 
     if(num_date[2] < 2020 || num_date[2] > 2021){
@@ -380,23 +366,25 @@ int checkSingleDate(char date[DATE_LEN]){
         return result;
     }
 
-    // controllo che non ha inserito un giorno di un register non ancora chiuso
-
-    //time(&t);
-    //timeinfo = localtime(&t);
 
     result = 1;
     return result;
 
 }
 
-// controlla se le due date distinte sono accettabili
+/*
+controlla le due date inserite dall'utente per la get
+requisiti:
+    - data iniziale < data finale se get chiede CASO
+    - data iniziale <= data finale se get chiede TAMPONE
+    - che sia data finale che data iniziale siano validi tramite la checkSingleDate
+*/ 
 int checkDates(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN] , char tipo_aggr[AGGR_LEN]){
-    //int result;
+    
     int start_date[3];
     int end_date[3];
 
-    printf("Nella checkDates()\ndata_iniziale:%s\ndata_finale:%s\n" , data_iniziale , data_finale);
+    //printf("Nella checkDates()\ndata_iniziale:%s\ndata_finale:%s\n" , data_iniziale , data_finale);
 
     if(strcmp(data_iniziale , "*") == 0 && strcmp(data_finale , "*") == 0){
         printf("Inserire solo un * o ometterli entrambi\n");
@@ -405,22 +393,15 @@ int checkDates(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN] , char 
     // controllo se una delle due e' un '*'
     if( (strcmp(data_iniziale , "*") == 0) && (checkSingleDate(data_finale)) ) return 1;
 
-	printf("questo dovrebbe essere stampato\ndata_iniziale:%s\ndata_finale:%s\n" , data_iniziale , data_finale);
     if( (strcmp(data_finale , "*") == 0) && (checkSingleDate(data_iniziale)) ) return 1;
 
-    printf("Dopo il controllo con *\n");
 
     sscanf(data_iniziale , "%d:%d:%d" , &start_date[0] , &start_date[1] , &start_date[2]);
     sscanf(data_finale , "%d:%d:%d" , &end_date[0] , &end_date[1] , &end_date[2]);
 
-    printf("Dopo la sscanf\n");
-
-    printf("START:\n0->%d\n1->%d\n2->%d\n" , start_date[0] , start_date[1] , start_date[2]);
-    printf("END:\n0->%d\n1->%d\n2->%d\n" , end_date[0] , end_date[1] , end_date[2]);
 
     if(!checkSingleDate(data_iniziale) || !checkSingleDate(data_finale)) return 0;
 
-    printf("dopo check single date\n");
     /*
         date[0] -> day
         date[1] -> month
@@ -439,8 +420,7 @@ int checkDates(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN] , char 
 }
 
 
-
-
+// calcolo il dato aggregato richiesto
 int calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN]){
     FILE * file_data;
     int tamponi , casi;
@@ -451,9 +431,10 @@ int calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN]){
 	int ret;
     char final;
     int yesterday_flag;
+    int alone;
 
-	//printf("\nNella calculate Total:\nData iniziale:%s\nData Finale:%s\n" , data_iniziale , data_finale);
 
+    // buffer che rappresenta una riga del file
     memset(line_buffer , 0 , 50);
 
     sprintf(filename , "%s%d%s" , FILE_PATH , my_port , ".txt");
@@ -472,33 +453,34 @@ int calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN]){
     done  = 0;
     tot = 0;
     today_aggr = 0;
+    alone = 0;
+    
+    // flag che indica se ho ottenuto il dato finale o no
+    all_final = 1;
+
+    if(neighbors[0] == 0 && neighbors[1] == 0){
+        alone = 1;
+        all_final = 0;
+        printf("Non ho vicini, quindi considererò solo i miei dati\n");
+    }
+
     /*
-        Scorro il file, leggo la data, 
-            se minore della data iniziale -> vado avanti
-            se la data iniziale e' la prima data del sistema, controllo che non sia maggiore di quella corrente
-            ogni data viene confrontata con quella finale
+    scorro il file, per ogni riga confronto con la data iniziale, una volta trovata:
+    - se ho il dato definitivo per quel giorno lo salvo e passo alla prossima data
+    - altrimenti avvio il flooding
+    ripeto fincheè non ho analizzato la data finale
     */
-
-   all_final = 1;
-
     while(fgets(line_buffer , 50 , file_data) && !(done)){
 
         // mantengo in prec_date la data prima di quella che stiamo analizzando 
         strcpy(prec_date , current_date);
         sscanf(line_buffer , "%s %d %d %c" , current_date , &tamponi , &casi , &final);
 
-		//printf("Sto analizzando la data:%s\n" , current_date);
+        //printf("Analizzo la data %s\n" , current_date);
+
 
         // sto cercando ancora la prima, quindi non calcolo i dati aggregati
         if(!found){
-            /*
-            posso avere o non avere la data iniziale:
-                - se ce l'ho, prima o poi current sara' uguale
-                - se non ce l'ho e' perche' prec_date e' minore e current_date e' maggiore
-            Una volta trovata, comincio a calcolare l'aggregato
-            Nel calcolarlo devo controllare di avere tutti i giorni consecutivi fino a data_finale
-            qualora non li avessi, inizia il flooding
-            */
 
 		    ret = compareDates(current_date , data_iniziale);
 		   
@@ -511,13 +493,20 @@ int calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN]){
         }
 
         if(found){ // trovato la prima data quindi conto
+           
             yesterday_aggr = today_aggr;
             yesterday_flag = today_flag;
 
             today_aggr = (strcmp(util_type , "TAMPONE") == 0) ? tamponi : casi;
 
+            // se non ho il dato definitivo chiedo ai peer
             if(final != 'F'){
+                if(alone){
+                    
+                    tot += today_aggr;
+                }
                 askToPeer(current_date , &tot);
+            // se ho il dato definitivo non ho bisogno del flooding
             }else{
                 tot += today_aggr;
                 today_flag = 1;
@@ -536,7 +525,7 @@ int calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN]){
             }
 
             first = 0;
-            
+           
         }
 
         if(compareDates(current_date , data_finale) == 0) done = 1;
@@ -550,22 +539,11 @@ int calculateTotal(char data_iniziale[DATE_LEN] , char data_finale[DATE_LEN]){
 }
 
 
-/**
- * La data di partenza e' specificata in costanti.h
- * L'ultima data e' salvata dal manager
- * Struttura dell'elaborazione aggregato:
- * 
- * 1) Scorro il file dall'inizio, se e' * la data iniziale o finche' non la trovo
- * 2) confronto le date per capire se sono successive, devo avere dati di tutti i giorni
- * 3) se non trovo la data, mando una request ai peer
- * 
- * 
- * 
- * 
- * 
- */
-// ritorna la data finale, questa coincide con il giorno corrente se sono passate le 18,
-// con il giorno precedente se non sono passate
+
+/*
+ottengo la data finale nel caso in cui l'utente abbia inserito '*'
+questa è banalmente l'ultima data di cui abbiamo dati nel file
+*/
 void getFinalDate(char date[DATE_LEN]){
     FILE * file_data;
     char filename[FILE_LEN];
@@ -586,56 +564,17 @@ void getFinalDate(char date[DATE_LEN]){
         sscanf(line_buffer , "%s" , date);
     }
 
-    
-    /*time_t t;
-    struct tm* timeinfo;
-    int day , year , month;
-
-    time(&t);
-    timeinfo = localtime(&t);
-
-    // giorno precedente
-    if(timeinfo->tm_hour < 18){
-
-        // primo dell'anno
-        if(timeinfo->tm_mday == 1){
-            if(timeinfo->tm_mon == 0){
-                day = 31;
-                month = 12;
-                year = timeinfo->tm_year - 1 + 1900;
-            }
-            else if(timeinfo->tm_mon == 1 || timeinfo->tm_mon == 3 || timeinfo->tm_mon == 5 || timeinfo->tm_mon == 8 || timeinfo->tm_mon == 10){
-                day = 31;
-            }
-            else if(timeinfo->tm_mon == 2){
-                day = 28 + isLeapYear(timeinfo->tm_year+1900);
-            }
-            else{
-                day = 30;
-            }
-            
-        }else{
-			day = timeinfo->tm_mday - 1;
-			month = timeinfo->tm_mon + 1;
-			year = timeinfo->tm_year + 1900 ;
-		}
-        //ptimo giorno di un mese
-        sprintf(date , "%d:%d:%d" , day , month , year);
-
-		//printf("\nDAY:%d\nMONTH:%d\nYEAR:%d\n\n" , day , month , year);
-    }else{
-        sprintf(date , "%d:%d:%d" , timeinfo->tm_mday , timeinfo->tm_mon + 1 , timeinfo->tm_year + 1900);
-    }*/
 }
 
-
+/*
+Legge dal proprio file le informazioni sulla data date
+*/
 void readFromFile(char* date, int *tamponi , int* casi , char* def){
     FILE * file_data;
     char line_buffer[50];
     char filename[DATA_LEN];
     char temp_data[DATE_LEN];
 
-	//printf("\nNella calculate Total:\nData iniziale:%s\nData Finale:%s\n" , data_iniziale , data_finale);
 
     memset(line_buffer , 0 , 50);
 
